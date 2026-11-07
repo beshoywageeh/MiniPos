@@ -18,7 +18,6 @@ class SaleItem extends Model
         'tax_amount',
         'line_total',
     ];
-
     public function sale()
     {
         return $this->belongsTo(Sale::class);

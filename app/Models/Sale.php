@@ -22,7 +22,11 @@ class Sale extends Model
         'notes',
         'created_by',
     ];
-
+    protected $casts = [
+        'invoice_date' => 'datetime',
+        'due_date' => 'datetime',
+        'status' => \App\Enums\DocumentStatus::class,
+    ];
     public function party()
     {
         return $this->belongsTo(Party::class);

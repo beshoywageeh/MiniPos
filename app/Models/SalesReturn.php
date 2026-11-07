@@ -18,7 +18,10 @@ class SalesReturn extends Model
         'notes',
         'created_by',
     ];
-
+    protected $casts = [
+        'return_date' => 'datetime',
+        'status' => \App\Enums\DocumentStatus::class,
+    ];
     public function sale()
     {
         return $this->belongsTo(Sale::class);

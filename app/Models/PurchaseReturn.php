@@ -18,7 +18,10 @@ class PurchaseReturn extends Model
         'notes',
         'created_by',
     ];
-
+    protected $casts = [
+        'return_date' => 'datetime',
+        'status' => \App\Enums\DocumentStatus::class,
+    ];
     public function purchase()
     {
         return $this->belongsTo(Purchase::class);

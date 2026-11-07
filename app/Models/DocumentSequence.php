@@ -18,4 +18,7 @@ class DocumentSequence extends Model
         'reset_period',
         'last_reset_at',
     ];
+    protected $casts = [
+        'reset_period' => \App\Enums\ResetPeriod::class,
+    ];
 }

@@ -22,6 +22,11 @@ class Payment extends Model
         'notes',
         'created_by',
     ];
+    protected $casts = [
+        'payment_date' => 'datetime',
+        'type' => \App\Enums\PaymentType::class,
+        'method' => \App\Enums\PaymentMethod::class,
+    ];
 
     public function party()
     {
