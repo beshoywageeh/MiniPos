@@ -2,8 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\ExpenseCategory;
 use Illuminate\Database\Eloquent\Model;
-use App\Enums\Enums\ExpenseCategory;
 
 class Expense extends Model
 {
@@ -18,10 +18,12 @@ class Expense extends Model
         'notes',
         'created_by',
     ];
+
     protected $casts = [
         'expense_category' => ExpenseCategory::class,
         'expense_date' => 'date',
     ];
+
     public function cashbox()
     {
         return $this->belongsTo(Cashbox::class);

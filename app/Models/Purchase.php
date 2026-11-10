@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentStatus;
 use Illuminate\Database\Eloquent\Model;
 
 class Purchase extends Model
@@ -23,11 +24,13 @@ class Purchase extends Model
         'notes',
         'created_by',
     ];
-protected $casts = [
+
+    protected $casts = [
         'invoice_date' => 'datetime',
         'due_date' => 'datetime',
-        'status' => \App\Enums\DocumentStatus::class,
+        'status' => DocumentStatus::class,
     ];
+
     public function party()
     {
         return $this->belongsTo(Party::class);
@@ -41,5 +44,10 @@ protected $casts = [
     public function items()
     {
         return $this->hasMany(PurchaseItem::class);
+    }
+
+    public function payments()
+    {
+        return $this->hasMany(Payment::class);
     }
 }

@@ -2,13 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\ResetPeriod;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class DocumentSequence extends Model
 {
-    use SoftDeletes;
-
     /** @var list<string> */
     protected $fillable = [
         'document_type',
@@ -18,7 +16,8 @@ class DocumentSequence extends Model
         'reset_period',
         'last_reset_at',
     ];
+
     protected $casts = [
-        'reset_period' => \App\Enums\ResetPeriod::class,
+        'reset_period' => ResetPeriod::class,
     ];
 }

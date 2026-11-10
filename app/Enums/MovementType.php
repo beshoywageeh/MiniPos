@@ -2,15 +2,16 @@
 
 namespace App\Enums;
 
-enum MovementType
+enum MovementType: string
 {
-    case INCOME;
-    case EXPENSE;
+    case IN = 'in';
+    case OUT = 'out';
+
     public function label(): string
     {
         return match ($this) {
-            self::INCOME => __('Movment.Income'),
-            self::EXPENSE => __('Movment.Expense'),
+            self::IN => __('Movment.Income'),
+            self::OUT => __('Movment.Expense'),
         };
     }
 }

@@ -2,12 +2,12 @@
 
 namespace App\Enums;
 
-enum ResetPeriod
+enum ResetPeriod: string
 {
-    case DAILY;
-    case WEEKLY;
-    case MONTHLY;
-    case YEARLY;
+    case DAILY = 'daily';
+    case WEEKLY = 'weekly';
+    case MONTHLY = 'monthly';
+    case YEARLY = 'yearly';
 
     public function label(): string
     {

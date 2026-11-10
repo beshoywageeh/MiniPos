@@ -2,10 +2,11 @@
 
 namespace App\Enums;
 
-enum PaymentType
+enum PaymentType: string
 {
-    case recipt;
-    case payment;
+    case recipt = 'receipt';
+    case payment = 'payment';
+
     public function label(): string
     {
         return match ($this) {

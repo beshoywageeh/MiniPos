@@ -18,9 +18,11 @@ class Party extends Model
         'note',
         'is_active',
     ];
+
     protected $casts = [
-        'type' => PartyType::class
+        'type' => PartyType::class,
     ];
+
     public function purchases()
     {
         return $this->hasMany(Purchase::class);
@@ -44,5 +46,10 @@ class Party extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function brands()
+    {
+        return $this->belongsToMany(Brand::class);
     }
 }

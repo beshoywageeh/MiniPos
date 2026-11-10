@@ -2,12 +2,13 @@
 
 namespace App\Enums;
 
-enum PaymentMethod
+enum PaymentMethod: string
 {
-    case CASH;
-    case BANK_TRANSFER;
-    case CREDIT_CARD;
-    case WALLET;
+    case CASH = 'cash';
+    case BANK_TRANSFER = 'bank_transfer';
+    case CREDIT_CARD = 'credit_card';
+    case WALLET = 'wallet';
+
     public function label(): string
     {
         return match ($this) {
