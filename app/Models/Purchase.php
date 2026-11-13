@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Enums\DocumentStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Purchase extends Model
 {
+    use HasFactory;
+
     /** @var list<string> */
     protected $fillable = [
         'document_number',

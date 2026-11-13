@@ -1,11 +1,52 @@
 <?php
 
+use App\Enums\MovementType;
+use App\Models\Cashbox;
+use App\Models\Expense;
+use App\Models\Product;
+use App\Models\Purchase;
+use App\Models\Sale;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => ['auth']], function () {
 
+    Route::livewire('/users', 'livewire.users.index')->name('users.index');
+
+    Route::view('/sales/create', 'sales.create')->name('sales.create');
+    Route::get('/sales/invoice-preview', fn () => view('sales.invoice-preview'))->name('sales.invoice_preview');
+
+    Route::view('/reports', 'reports.index')->name('reports.index');
+
     Route::get('/dashboard', function () {
-        return view('dashboard');
-    });
+        $today = today();
+
+        $todaysSales = Sale::whereDate('invoice_date', $today)->sum('total_amount');
+        $todaysPurchases = Purchase::whereDate('invoice_date', $today)->sum('total_amount');
+        $todaysExpenses = Expense::whereDate('expense_date', $today)->sum('amount');
+        $cashBalance = Cashbox::query()->sum('opening_balance');
+
+        $recentSales = Sale::query()
+            ->latest('invoice_date')
+            ->latest('id')
+            ->limit(5)
+            ->get();
+
+        $lowStockProducts = Product::query()
+            ->where('is_active', true)
+            ->withSum(['stockMovements as stock_in' => fn ($query) => $query->where('movement_type', MovementType::IN)], 'quantity')
+            ->withSum(['stockMovements as stock_out' => fn ($query) => $query->where('movement_type', MovementType::OUT)], 'quantity')
+            ->get()
+            ->filter(fn (Product $product) => ($product->stock_in - $product->stock_out) <= $product->min_stock)
+            ->take(5);
+
+        return view('dashboard', [
+            'todaysSales' => $todaysSales,
+            'todaysPurchases' => $todaysPurchases,
+            'todaysExpenses' => $todaysExpenses,
+            'cashBalance' => $cashBalance,
+            'recentSales' => $recentSales,
+            'lowStockProducts' => $lowStockProducts,
+        ]);
+    })->name('dashboard');
 });
-require __DIR__ . '/Auth.php';
+require __DIR__.'/Auth.php';
