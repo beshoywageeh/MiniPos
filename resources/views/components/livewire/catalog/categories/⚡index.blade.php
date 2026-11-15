@@ -20,8 +20,7 @@ new class extends Component {
             ->with('parent')
             ->when($this->search, function ($query) {
                 $query->where(function ($query) {
-                    $query->where('name', 'like', "%{$this->search}%")
-                        ->orWhere('code', 'like', "%{$this->search}%");
+                    $query->where('name', 'like', "%{$this->search}%")->orWhere('code', 'like', "%{$this->search}%");
                 });
             })
             ->latest('id')
@@ -55,7 +54,6 @@ new class extends Component {
 
     <x-card>
         <x-form.input name="search" wire:model.live.debounce.300ms="search" :label="__('categories.search')" />
-
         <x-table>
             @slot('head')
                 <tr>

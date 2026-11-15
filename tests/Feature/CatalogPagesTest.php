@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Brand;
 use App\Models\Category;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -157,4 +158,34 @@ test('a category can be soft deleted', function () {
 
     expect($target->refresh()->deleted_at)->not->toBeNull()
         ->and(Category::where('name', 'Doomed')->exists())->toBeFalse();
+});
+
+test('brands page lists brands', function () {
+    $user = User::factory()->create();
+    Brand::factory()->create(['name' => 'Acme Corp']);
+
+    Livewire::actingAs($user)->test('livewire.catalog.brands.index')
+        ->assertSee('Acme Corp');
+});
+
+test('a brand can be created and duplicate codes are rejected', function () {
+    Brand::factory()->create(['code' => 'BRD-TAKEN']);
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.brands.actions.create')
+        ->set('code', 'BRD-NEW')
+        ->set('name', 'Acme Corp')
+        ->call('create')
+        ->assertDispatched('brand-created');
+
+    expect(Brand::where('code', 'BRD-NEW')->exists())->toBeTrue();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.brands.actions.create')
+        ->set('code', 'BRD-TAKEN')
+        ->set('name', 'Other')
+        ->call('create')
+        ->assertHasErrors(['code' => 'unique'])
+        ->assertNotDispatched('brand-created');
 });
