@@ -189,3 +189,30 @@ test('a brand can be created and duplicate codes are rejected', function () {
         ->assertHasErrors(['code' => 'unique'])
         ->assertNotDispatched('brand-created');
 });
+
+test('a brand can be updated and its own code passes unique validation', function () {
+    $user = User::factory()->create();
+    $target = Brand::factory()->create(['code' => 'BRD-KEEP', 'name' => 'Old']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.brands.actions.update', ['brand' => $target])
+        ->set('name', 'New')
+        ->call('update')
+        ->assertDispatched('brand-updated')
+        ->assertHasNoErrors();
+
+    expect($target->refresh()->name)->toBe('New')
+        ->and($target->code)->toBe('BRD-KEEP');
+});
+
+test('a brand can be soft deleted', function () {
+    $user = User::factory()->create();
+    $target = Brand::factory()->create(['name' => 'Doomed']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.brands.actions.delete', ['brand' => $target])
+        ->call('delete')
+        ->assertDispatched('brand-deleted');
+
+    expect($target->refresh()->deleted_at)->not->toBeNull();
+});

@@ -72,7 +72,10 @@ new class extends Component {
                     <x-table.td class="font-medium text-slate-900">{{ $brand->name }}</x-table.td>
                     <x-table.td class="text-slate-500">{{ $brand->created_at->format('Y-m-d') }}</x-table.td>
                     <x-table.td>
-                        {{-- update/delete components wired in Task 7 --}}
+                        <livewire:livewire.catalog.brands.actions.update :brand="$brand"
+                            wire:key="brand-update-{{ $brand->id }}" />
+                        <livewire:livewire.catalog.brands.actions.delete :brand="$brand"
+                            wire:key="brand-delete-{{ $brand->id }}" />
                     </x-table.td>
                 </tr>
             @empty

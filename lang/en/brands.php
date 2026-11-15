@@ -15,4 +15,5 @@ return [
     'description' => 'Description',
     'active' => 'Active',
     'no_records' => 'No brands found.',
+    'delete_confirm' => 'Are you sure you want to delete',
 ];
