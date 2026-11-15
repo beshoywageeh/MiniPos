@@ -105,3 +105,43 @@ test('a category can be created with a parent', function () {
 
     expect(Category::where('code', 'CAT-CHILD')->first()->parent_id)->toBe($parent->id);
 });
+
+test('a category can be updated including its parent', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->create(['name' => 'Old']);
+    $parent = Category::factory()->create(['name' => 'Root']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.update', ['category' => $target])
+        ->assertSet('name', 'Old')
+        ->set('name', 'New')
+        ->set('parentId', $parent->id)
+        ->call('update')
+        ->assertDispatched('category-updated');
+
+    expect($target->refresh()->name)->toBe('New')
+        ->and($target->parent_id)->toBe($parent->id);
+});
+
+test('keeping own code passes unique validation on category update', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->create(['code' => 'CAT-KEEP']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.update', ['category' => $target])
+        ->set('name', 'Renamed')
+        ->call('update')
+        ->assertHasNoErrors();
+
+    expect($target->refresh()->code)->toBe('CAT-KEEP');
+});
+
+test('a category cannot select itself as parent', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->create();
+
+    $component = Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.update', ['category' => $target]);
+
+    expect($component->instance()->parentOptions->keys())->not->toContain($target->id);
+});

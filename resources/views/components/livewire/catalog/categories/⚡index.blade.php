@@ -75,7 +75,8 @@ new class extends Component {
                     <x-table.td class="text-slate-600">{{ $category->parent?->name ?? '—' }}</x-table.td>
                     <x-table.td class="text-slate-500">{{ $category->created_at->format('Y-m-d') }}</x-table.td>
                     <x-table.td>
-                        {{-- update/delete components wired in Tasks 4 and 5 --}}
+                        <livewire:livewire.catalog.categories.actions.update :category="$category"
+                            wire:key="category-update-{{ $category->id }}" />
                     </x-table.td>
                 </tr>
             @empty
