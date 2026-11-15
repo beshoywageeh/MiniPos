@@ -64,3 +64,44 @@ test('categories list refreshes when an event fires', function () {
 
     expect($component->html())->toContain('After Update');
 });
+
+test('a category can be created', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.create')
+        ->set('code', 'CAT-TEST')
+        ->set('name', 'Beverages')
+        ->call('create')
+        ->assertDispatched('category-created');
+
+    expect(Category::where('code', 'CAT-TEST')->where('name', 'Beverages')->exists())->toBeTrue();
+});
+
+test('category creation validates duplicate code and required name', function () {
+    Category::factory()->create(['code' => 'CAT-TAKEN']);
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.create')
+        ->set('code', 'CAT-TAKEN')
+        ->set('name', '')
+        ->call('create')
+        ->assertHasErrors(['code' => 'unique', 'name' => 'required'])
+        ->assertNotDispatched('category-created');
+});
+
+test('a category can be created with a parent', function () {
+    $user = User::factory()->create();
+    $parent = Category::factory()->create(['name' => 'Root']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.create')
+        ->set('code', 'CAT-CHILD')
+        ->set('name', 'Soda')
+        ->set('parentId', $parent->id)
+        ->call('create')
+        ->assertDispatched('category-created');
+
+    expect(Category::where('code', 'CAT-CHILD')->first()->parent_id)->toBe($parent->id);
+});

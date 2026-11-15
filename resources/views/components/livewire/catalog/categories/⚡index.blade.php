@@ -49,7 +49,7 @@ new class extends Component {
 
     <x-page-header :title="__('categories.title')" :subtitle="__('categories.subtitle')">
         <x-slot:actions>
-            {{-- create component wired in Task 3 --}}
+            <livewire:livewire.catalog.categories.actions.create />
         </x-slot:actions>
     </x-page-header>
 
