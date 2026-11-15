@@ -1,67 +1,41 @@
 <?php
+use App\Models\User;
 use Livewire\Attributes\Computed;
+use Livewire\Attributes\On;
+
 use Livewire\WithPagination;
 use Livewire\Component;
-use App\Models\User;
+
 new class extends Component {
     use WithPagination;
-
-    public $userName = '';
-    public $email = '';
-    public $password = '';
-    public function newUser()
-    {
-        User::create([
-            'name' => $this->userName,
-            'email' => $this->email,
-            'password' => Hash::make($this->password),
-        ]);
-    }
     #[Computed]
     public function users()
     {
-        return User::paginate('1');
+        return User::query()->latest('id')->paginate('10');
+    }
+
+    #[On('user-created')]
+    #[On('user-updated')]
+    #[On('user-deleted')]
+    public function refreshList(): void
+    {
+        //
     }
 };
 ?>
 
-<div class="mx-auto max-w-7xl space-y-6">
+<div class="mx-auto max-w-7xl space-y-6" x-data="{ flash: false, flashMessage: '' }"
+    @user-created.window="flashMessage = @js(__('users.created')); flash = true; setTimeout(() => flash = false, 3000)"
+    @user-updated.window="flashMessage = @js(__('users.updated')); flash = true; setTimeout(() => flash = false, 3000)"
+    @user-deleted.window="flashMessage = @js(__('users.deleted')); flash = true; setTimeout(() => flash = false, 3000)">
+    <div x-show="flash" x-cloak x-transition.opacity
+        class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+        <span x-text="flashMessage"></span>
+    </div>
+
     <x-page-header :title="__('users.title')" :subtitle="__('users.subtitle')">
         <x-slot:actions>
-            <x-modal>
-                <x-slot:trigger>
-                    <x-button @click="open = true">
-                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                            stroke="currentColor" class="h-5 w-5">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                        </svg>
-                        {{ __('users.add') }}
-                    </x-button>
-                </x-slot:trigger>
-
-                <x-slot:title>
-                    {{ __('users.add') }}
-                </x-slot:title>
-
-                {{-- Sample form: static inputs, no submission logic yet. --}}
-                <form class="space-y-4" wire:submit="newUser()">
-                    <x-form.input name="name" wire:model="name" :label="__('users.name')" />
-                    <x-form.input name="email" type="email" wire:model="email" :label="__('user.email')" />
-                    <x-form.input name="password" type="password" wire:model="password" :label="__('user.password')" />
-                    <x-form.input name="confirmpassword" type="confirmpassword" wire:model="confirmpassword"
-                        :label="__('user.confirmpassword')" />
-                    <x-slot:footer>
-                        <x-button variant="secondary" @click="open = false">
-                            {{ __('general.cancel') }}
-                        </x-button>
-                        <x-button @click="open = false">
-                            {{ __('general.save') }}
-                        </x-button>
-                    </x-slot:footer>
-                </form>
-
-
-            </x-modal>
+            <livewire:livewire.users.actions.create />
         </x-slot:actions>
     </x-page-header>
 
@@ -82,7 +56,12 @@ new class extends Component {
                     <x-table.td class="font-medium text-slate-900">{{ $user->name }}</x-table.td>
                     <x-table.td class="text-slate-600">{{ $user->email }}</x-table.td>
                     <x-table.td class="text-slate-500">{{ $user->created_at->format('Y-m-d') }}</x-table.td>
-                    <x-table.td></x-table.td>
+                    <x-table.td>
+                        <livewire:livewire.users.actions.update :user="$user"
+                            wire:key="user-update-{{ $user->id }}" />
+                        <livewire:livewire.users.actions.delete :user="$user"
+                            wire:key="user-delete-{{ $user->id }}" />
+                    </x-table.td>
                 </tr>
             @empty
                 <tr>

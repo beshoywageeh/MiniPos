@@ -13,4 +13,10 @@ return [
     'notes' => 'Notes',
     'notes_help' => 'Optional internal notes about this user.',
     'active' => 'Active account',
+    'created' => 'User created successfully.',
+    'updated' => 'User updated successfully.',
+    'deleted' => 'User deleted successfully.',
+    'edit' => 'Edit',
+    'delete' => 'Delete',
+    'password_help' => 'Leave blank to keep the current password.',
 ];

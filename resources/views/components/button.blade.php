@@ -16,6 +16,6 @@
 
 <{{ $tag }} {{ $attributes->merge([
     'class' => 'inline-flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition focus:outline-none focus:ring-2 focus:ring-indigo-500/30 '.$variants[$variant],
-]) }} @if ($href !== null) href="{{ $href }}" @else type="button" @endif>
+]) }} @if ($href !== null) href="{{ $href }}" @elseif (! $attributes->has('type')) type="button" @endif>
     {{ $slot }}
 </{{ $tag }}>

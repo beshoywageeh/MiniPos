@@ -1,10 +1,16 @@
-// Livewire + Alpine (single Alpine instance, started by Livewire).
+// Livewire + Alpine: importing the Livewire ESM bundle registers
+// window.Livewire/window.Alpine and auto-starts Livewire on DOMContentLoaded
+// (when @livewireScripts is not used). Do NOT call Livewire.start() manually:
+// the bundle has no double-start guard and re-registering Alpine plugins
+// (e.g. $persist) throws "can't redefine non-configurable property".
 import { Livewire, Alpine } from '../../vendor/livewire/livewire/dist/livewire.esm'
 
 import { Grid } from 'gridjs'
 import 'gridjs/dist/theme/mermaid.css'
 
 window.Alpine = Alpine
+
+Livewire.start()
 
 const gridClassName = {
     table: 'w-full text-left text-sm',
@@ -103,5 +109,3 @@ document.querySelectorAll('[data-gridjs-filter]').forEach((input) => {
         applyFilters(mount)
     })
 })
-
-Livewire.start()

@@ -13,6 +13,7 @@
 @endphp
 
 <div
+    {{ $attributes }}
     x-data="{ open: false }"
     @keydown.escape.window="open = false"
     x-effect="document.body.classList.toggle('overflow-hidden', open)"
