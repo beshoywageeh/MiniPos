@@ -22,6 +22,8 @@ return [
     'min_stock' => 'Minimum',
     'nav_dashboard' => 'Dashboard',
     'nav_users' => 'Users',
+    'nav_categories' => 'Categories',
+    'nav_brands' => 'Brands',
     'nav_products' => 'Products',
     'nav_sales' => 'Sales',
     'nav_purchases' => 'Purchases',

@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\Route;
 Route::group(['middleware' => ['auth']], function () {
 
     Route::livewire('/users', 'livewire.users.index')->name('users.index');
+    Route::livewire('/categories', 'livewire.catalog.categories.index')->name('categories.index');
+    Route::livewire('/brands', 'livewire.catalog.brands.index')->name('brands.index');
 
     Route::view('/sales/create', 'sales.create')->name('sales.create');
     Route::get('/sales/invoice-preview', fn () => view('sales.invoice-preview'))->name('sales.invoice_preview');
