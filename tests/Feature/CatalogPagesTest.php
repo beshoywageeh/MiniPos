@@ -145,3 +145,16 @@ test('a category cannot select itself as parent', function () {
 
     expect($component->instance()->parentOptions->keys())->not->toContain($target->id);
 });
+
+test('a category can be soft deleted', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->create(['name' => 'Doomed']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.delete', ['category' => $target])
+        ->call('delete')
+        ->assertDispatched('category-deleted');
+
+    expect($target->refresh()->deleted_at)->not->toBeNull()
+        ->and(Category::where('name', 'Doomed')->exists())->toBeFalse();
+});

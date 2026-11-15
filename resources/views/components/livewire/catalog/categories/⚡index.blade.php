@@ -77,6 +77,8 @@ new class extends Component {
                     <x-table.td>
                         <livewire:livewire.catalog.categories.actions.update :category="$category"
                             wire:key="category-update-{{ $category->id }}" />
+                        <livewire:livewire.catalog.categories.actions.delete :category="$category"
+                            wire:key="category-delete-{{ $category->id }}" />
                     </x-table.td>
                 </tr>
             @empty
