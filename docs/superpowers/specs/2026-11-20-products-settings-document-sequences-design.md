@@ -57,7 +57,7 @@ enum ProductType: string
 - `App\Models\Unit`: add the `HasFactory` trait (its factory exists but is not wired; product tests need `Unit::factory()`).
 - `ProductFactory`: add a `service()` state that sets `type` to `ProductType::Service`.
 - Add `lang/en/ProductType.php` with `Product` and `Service` labels, matching the enum's existing `__('ProductType.Product')` calls.
-- **Live database:** the Postgres `products` table already exists. Apply the column with `ALTER TABLE products ADD COLUMN type varchar(20) NOT NULL DEFAULT 'product';`, or rebuild with `php artisan migrate:fresh --seed` (destructive). The plan will use the ALTER route for the dev database.
+- **Live database:** the development database is SQLite (`database/database.sqlite`) and the `products` table already exists. Add the column through the schema builder (`Schema::table('products', fn ($table) => $table->string('type', 20)->default('product'))`), or rebuild with `php artisan migrate:fresh --seed` (destructive). The plan uses the schema-builder route for the dev database.
 
 ### A2. Index page
 
@@ -267,10 +267,10 @@ Reset rules:
 
 ## Rollout and risks
 
-- **Products migration:** edited in place. On the dev Postgres database run the explicit `ALTER TABLE` (or `migrate:fresh --seed`, which destroys data). Tests use `RefreshDatabase` on SQLite and pick up the edited migration automatically.
+- **Products migration:** edited in place. On the SQLite development database add the column with `Schema::table(...)` or rebuild with `migrate:fresh --seed` (which destroys data). Tests use `RefreshDatabase` on SQLite and pick up the edited migration automatically.
 - **ProductType conversion:** pure enum → string-backed. Safe now because nothing references it; grep confirms no usage.
 - **Sequences during seeding:** `DemoDataSeeder` requires `TestSeeder`, which creates all six sequences before numbers are requested, so the service will not throw there. Monthly reset with a null `last_reset_at` will not reset mid-seed.
-- **Concurrency:** sequence increments are serialized on Postgres via `lockForUpdate`. This is not stress-tested on SQLite.
+- **Concurrency:** sequence increments are serialized on databases that honour row locks (Postgres) via `lockForUpdate`; SQLite treats it as a no-op, so concurrent numbering is not stress-tested in the dev environment.
 - **Timezone:** reset boundaries use the application timezone.
 - **Settings concurrency:** last write wins; acceptable for a single-admin back office.
 
