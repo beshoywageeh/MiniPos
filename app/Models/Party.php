@@ -3,18 +3,20 @@
 namespace App\Models;
 
 use App\Enums\PartyType;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Party extends Model
 {
+    use HasFactory, SoftDeletes;
+
     protected $fillable = [
         'code',
         'name',
         'type',
         'phone',
-        'email',
         'address',
-        'tax_number',
         'note',
         'is_active',
     ];

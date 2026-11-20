@@ -13,9 +13,11 @@ Route::group(['middleware' => ['auth']], function () {
     Route::livewire('/users', 'livewire.users.index')->name('users.index');
     Route::livewire('/categories', 'livewire.catalog.categories.index')->name('categories.index');
     Route::livewire('/brands', 'livewire.catalog.brands.index')->name('brands.index');
+    Route::livewire('/units', 'livewire.unit.index')->name('units.index');
+    Route::livewire('/parties', 'livewire.party.index')->name('parties.index');
 
     Route::view('/sales/create', 'sales.create')->name('sales.create');
-    Route::get('/sales/invoice-preview', fn () => view('sales.invoice-preview'))->name('sales.invoice_preview');
+    Route::get('/sales/invoice-preview', fn() => view('sales.invoice-preview'))->name('sales.invoice_preview');
 
     Route::view('/reports', 'reports.index')->name('reports.index');
 
@@ -35,10 +37,10 @@ Route::group(['middleware' => ['auth']], function () {
 
         $lowStockProducts = Product::query()
             ->where('is_active', true)
-            ->withSum(['stockMovements as stock_in' => fn ($query) => $query->where('movement_type', MovementType::IN)], 'quantity')
-            ->withSum(['stockMovements as stock_out' => fn ($query) => $query->where('movement_type', MovementType::OUT)], 'quantity')
+            ->withSum(['stockMovements as stock_in' => fn($query) => $query->where('movement_type', MovementType::IN)], 'quantity')
+            ->withSum(['stockMovements as stock_out' => fn($query) => $query->where('movement_type', MovementType::OUT)], 'quantity')
             ->get()
-            ->filter(fn (Product $product) => ($product->stock_in - $product->stock_out) <= $product->min_stock)
+            ->filter(fn(Product $product) => ($product->stock_in - $product->stock_out) <= $product->min_stock)
             ->take(5);
 
         return view('dashboard', [
@@ -51,4 +53,4 @@ Route::group(['middleware' => ['auth']], function () {
         ]);
     })->name('dashboard');
 });
-require __DIR__.'/Auth.php';
+require __DIR__ . '/Auth.php';

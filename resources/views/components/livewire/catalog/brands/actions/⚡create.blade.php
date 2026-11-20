@@ -43,12 +43,12 @@ new class extends Component {
                     stroke="currentColor" class="h-5 w-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
-                {{ __('brands.add') }}
+                {{ __('general.add') }}
             </x-button>
         </x-slot:trigger>
 
         <x-slot:title>
-            {{ __('brands.add') }}
+            {{ __('general.add') }}
         </x-slot:title>
 
         <form class="space-y-4" wire:submit="create">

@@ -19,8 +19,7 @@ new class extends Component {
         return Brand::query()
             ->when($this->search, function ($query) {
                 $query->where(function ($query) {
-                    $query->where('name', 'like', "%{$this->search}%")
-                        ->orWhere('code', 'like', "%{$this->search}%");
+                    $query->where('name', 'like', "%{$this->search}%")->orWhere('code', 'like', "%{$this->search}%");
                 });
             })
             ->latest('id')
@@ -53,7 +52,7 @@ new class extends Component {
     </x-page-header>
 
     <x-card>
-        <x-form.input name="search" wire:model.live.debounce.300ms="search" :label="__('brands.search')" />
+        <x-form.input name="search" wire:model.live.debounce.300ms="search" :label="__('general.search')" />
 
         <x-table>
             @slot('head')

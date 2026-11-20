@@ -53,7 +53,7 @@ new class extends Component {
     </x-page-header>
 
     <x-card>
-        <x-form.input name="search" wire:model.live.debounce.300ms="search" :label="__('categories.search')" />
+        <x-form.input name="search" wire:model.live.debounce.300ms="search" :label="__('general.search')" />
         <x-table>
             @slot('head')
                 <tr>
