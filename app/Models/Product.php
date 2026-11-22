@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\ProductType;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -17,6 +18,7 @@ class Product extends Model
         'sku',
         'barcode',
         'name',
+        'type',
         'description',
         'category_id',
         'brand_id',
@@ -25,6 +27,12 @@ class Product extends Model
         'selling_price',
         'min_stock',
         'is_active',
+    ];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        'type' => ProductType::class,
+        'is_active' => 'boolean',
     ];
 
     public function category()

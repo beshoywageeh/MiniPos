@@ -2,6 +2,7 @@
 
 namespace Database\Factories;
 
+use App\Enums\ProductType;
 use App\Models\Product;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
@@ -24,6 +25,7 @@ class ProductFactory extends Factory
             'sku' => 'SKU-'.fake()->unique()->numerify('#####'),
             'barcode' => fake()->unique()->ean13(),
             'name' => fake()->unique()->words(2, true),
+            'type' => ProductType::Product,
             'description' => fake()->sentence(),
             'category_id' => CategoryFactory::new(),
             'brand_id' => BrandFactory::new(),
@@ -33,5 +35,12 @@ class ProductFactory extends Factory
             'min_stock' => fake()->randomFloat(2, 1, 20),
             'is_active' => true,
         ];
+    }
+
+    public function service(): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'type' => ProductType::Service,
+        ]);
     }
 }
