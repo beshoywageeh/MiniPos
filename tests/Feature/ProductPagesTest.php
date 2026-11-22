@@ -239,3 +239,58 @@ test('product creation rejects duplicate code, sku and barcode plus missing requ
         ])
         ->assertNotDispatched('product-created');
 });
+
+test('a product can be updated including type and classification', function () {
+    $user = User::factory()->create();
+    $product = Product::factory()->create([
+        'name' => 'Old Name',
+        'type' => ProductType::Product,
+    ]);
+    $category = Category::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.products.actions.update', ['product' => $product])
+        ->assertSet('name', 'Old Name')
+        ->set('name', 'New Name')
+        ->set('type', ProductType::Service->value)
+        ->set('categoryId', $category->id)
+        ->call('update')
+        ->assertDispatched('product-updated')
+        ->assertHasNoErrors();
+
+    expect($product->refresh()->name)->toBe('New Name')
+        ->and($product->type)->toBe(ProductType::Service)
+        ->and($product->category_id)->toBe($category->id);
+});
+
+test('keeping its own code, sku and barcode passes unique validation on product update', function () {
+    $user = User::factory()->create();
+    $product = Product::factory()->create([
+        'code' => 'PRD-KEEP',
+        'sku' => 'SKU-KEEP',
+        'barcode' => '1234567890123',
+    ]);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.products.actions.update', ['product' => $product])
+        ->set('name', 'Renamed')
+        ->call('update')
+        ->assertHasNoErrors();
+
+    expect($product->refresh()->code)->toBe('PRD-KEEP')
+        ->and($product->sku)->toBe('SKU-KEEP')
+        ->and($product->barcode)->toBe('1234567890123');
+});
+
+test('product update rejects a code used by another product', function () {
+    Product::factory()->create(['code' => 'PRD-OTHER']);
+    $product = Product::factory()->create();
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.products.actions.update', ['product' => $product])
+        ->set('code', 'PRD-OTHER')
+        ->call('update')
+        ->assertHasErrors(['code' => 'unique'])
+        ->assertNotDispatched('product-updated');
+});
