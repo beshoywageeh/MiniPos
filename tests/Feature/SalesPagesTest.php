@@ -21,14 +21,14 @@ test('new sale page renders for authenticated users', function () {
     $response->assertSee(route('sales.invoice_preview'));
 });
 
-test('new sale page product picker points at the product lookup endpoint', function () {
+test('new sale page renders the server-side product picker', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->get('/sales/create');
 
     $response->assertOk();
-    $response->assertSee(route('products.lookup'));
     $response->assertSee(__('sales.search_product'));
+    $response->assertSee(__('sales.draft'));
     $response->assertDontSee(__('sales.select_product'));
 });
 
