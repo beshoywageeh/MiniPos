@@ -294,3 +294,16 @@ test('product update rejects a code used by another product', function () {
         ->assertHasErrors(['code' => 'unique'])
         ->assertNotDispatched('product-updated');
 });
+
+test('a product can be soft deleted', function () {
+    $user = User::factory()->create();
+    $product = Product::factory()->create(['name' => 'Doomed Product']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.products.actions.delete', ['product' => $product])
+        ->call('delete')
+        ->assertDispatched('product-deleted');
+
+    expect($product->refresh()->deleted_at)->not->toBeNull()
+        ->and(Product::where('name', 'Doomed Product')->exists())->toBeFalse();
+});
