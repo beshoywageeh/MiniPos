@@ -148,3 +148,94 @@ test('products list refreshes when an event fires', function () {
 
     expect($component->html())->toContain('After Update');
 });
+
+test('a product can be created with classification and pricing', function () {
+    $user = User::factory()->create();
+    $category = Category::factory()->create();
+    $brand = Brand::factory()->create();
+    $unit = Unit::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.products.actions.create')
+        ->set('code', 'PRD-TEST')
+        ->set('type', ProductType::Service->value)
+        ->set('sku', '')
+        ->set('barcode', '')
+        ->set('name', 'Consulting Hour')
+        ->set('description', 'On-site help')
+        ->set('categoryId', $category->id)
+        ->set('brandId', $brand->id)
+        ->set('unitId', $unit->id)
+        ->set('purchasePrice', '0')
+        ->set('sellingPrice', '25.50')
+        ->set('minStock', '0')
+        ->set('isActive', false)
+        ->call('create')
+        ->assertDispatched('product-created')
+        ->assertHasNoErrors();
+
+    $product = Product::where('code', 'PRD-TEST')->firstOrFail();
+
+    expect($product->type)->toBe(ProductType::Service)
+        ->and($product->name)->toBe('Consulting Hour')
+        ->and($product->category_id)->toBe($category->id)
+        ->and($product->brand_id)->toBe($brand->id)
+        ->and($product->unit_id)->toBe($unit->id)
+        ->and($product->sku)->toBeNull()
+        ->and($product->barcode)->toBeNull()
+        ->and($product->is_active)->toBeFalse();
+});
+
+test('several products can be created with empty sku and barcode', function () {
+    $user = User::factory()->create();
+
+    foreach (['PRD-BLANK-1', 'PRD-BLANK-2'] as $code) {
+        Livewire::actingAs($user)
+            ->test('livewire.catalog.products.actions.create')
+            ->set('code', $code)
+            ->set('name', "Blank {$code}")
+            ->set('sku', '')
+            ->set('barcode', '')
+            ->set('purchasePrice', '1')
+            ->set('sellingPrice', '2')
+            ->set('minStock', '0')
+            ->call('create')
+            ->assertHasNoErrors()
+            ->assertDispatched('product-created');
+    }
+
+    expect(Product::whereIn('code', ['PRD-BLANK-1', 'PRD-BLANK-2'])
+        ->whereNull('sku')
+        ->whereNull('barcode')
+        ->count())->toBe(2);
+});
+
+test('product creation rejects duplicate code, sku and barcode plus missing required fields', function () {
+    Product::factory()->create([
+        'code' => 'PRD-TAKEN',
+        'sku' => 'SKU-TAKEN',
+        'barcode' => '9999999999999',
+    ]);
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.products.actions.create')
+        ->set('code', 'PRD-TAKEN')
+        ->set('sku', 'SKU-TAKEN')
+        ->set('barcode', '9999999999999')
+        ->set('name', '')
+        ->set('purchasePrice', '')
+        ->set('sellingPrice', '')
+        ->set('minStock', '')
+        ->call('create')
+        ->assertHasErrors([
+            'code' => 'unique',
+            'sku' => 'unique',
+            'barcode' => 'unique',
+            'name' => 'required',
+            'purchasePrice' => 'required',
+            'sellingPrice' => 'required',
+            'minStock' => 'required',
+        ])
+        ->assertNotDispatched('product-created');
+});
