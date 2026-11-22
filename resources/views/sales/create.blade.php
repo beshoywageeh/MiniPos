@@ -2,17 +2,36 @@
     @php
         $sampleCustomers = ['Walk-in Customer', 'John Smith', 'Sara Johnson'];
         $sampleWarehouses = ['Main Warehouse', 'Downtown Store'];
-        $sampleProducts = ['Espresso Coffee 250g', 'Green Tea 100g', 'Ceramic Mug', 'Honey Jar 500g'];
         $samplePaymentMethods = ['Cash', 'Card', 'Bank Transfer'];
     @endphp
 
     <div
         class="mx-auto max-w-7xl space-y-6"
         x-data="{
-            items: [{ product: '', qty: 1, price: 0, discount: 0, tax: 0 }],
+            lookupUrl: '{{ route('products.lookup') }}',
+            items: [{ productId: null, productSearch: '', results: [], showResults: false, qty: 1, price: 0, discount: 0, tax: 0 }],
             paid: 0,
-            addItem() { this.items.push({ product: '', qty: 1, price: 0, discount: 0, tax: 0 }) },
+            addItem() { this.items.push({ productId: null, productSearch: '', results: [], showResults: false, qty: 1, price: 0, discount: 0, tax: 0 }) },
             removeItem(index) { this.items.splice(index, 1) },
+            async searchProducts(index) {
+                const item = this.items[index];
+                const term = (item.productSearch || '').trim();
+                if (term.length < 2) { item.results = []; item.showResults = false; return; }
+                try {
+                    const response = await fetch(this.lookupUrl + '?q=' + encodeURIComponent(term));
+                    const data = await response.json();
+                    item.results = data.data || [];
+                } catch { item.results = []; }
+                item.showResults = item.results.length > 0;
+            },
+            pickProduct(index, product) {
+                const item = this.items[index];
+                item.productId = product.id;
+                item.productSearch = product.name;
+                item.price = product.selling_price;
+                item.results = [];
+                item.showResults = false;
+            },
             fmt(value) { return Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) },
             lineBase(item) { return item.qty * item.price - item.discount },
             lineTotal(item) { return this.lineBase(item) + this.lineBase(item) * item.tax / 100 },
@@ -72,16 +91,38 @@
                     <div class="grid grid-cols-2 items-end gap-3 rounded-lg border border-slate-100 p-3 sm:grid-cols-6 lg:grid-cols-12 lg:border-0 lg:p-0">
                         <div class="col-span-2 sm:col-span-6 lg:col-span-4">
                             <label class="block text-xs font-medium text-slate-500 lg:hidden" :for="'product-' + index">{{ __('sales.product') }}</label>
-                            <select
-                                :id="'product-' + index"
-                                x-model="item.product"
-                                class="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                            >
-                                <option value="">{{ __('sales.select_product') }}</option>
-                                @foreach ($sampleProducts as $product)
-                                    <option value="{{ $product }}">{{ $product }}</option>
-                                @endforeach
-                            </select>
+                            <div class="relative">
+                                <input
+                                    type="text"
+                                    :id="'product-' + index"
+                                    x-model="item.productSearch"
+                                    @input.debounce.300ms="searchProducts(index)"
+                                    @focus="item.showResults = item.results.length > 0"
+                                    @blur="setTimeout(() => item.showResults = false, 150)"
+                                    autocomplete="off"
+                                    placeholder="{{ __('sales.search_product') }}"
+                                    class="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                />
+                                <div
+                                    x-show="item.showResults"
+                                    x-cloak
+                                    class="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg"
+                                >
+                                    <template x-for="result in item.results" :key="result.id">
+                                        <button
+                                            type="button"
+                                            @mousedown.prevent="pickProduct(index, result)"
+                                            class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-indigo-50"
+                                        >
+                                            <span class="min-w-0">
+                                                <span class="block truncate font-medium text-slate-900" x-text="result.name"></span>
+                                                <span class="block truncate text-xs text-slate-500" x-text="result.code + (result.sku ? ' · ' + result.sku : '')"></span>
+                                            </span>
+                                            <span class="shrink-0 text-xs font-semibold text-slate-700" x-text="fmt(result.selling_price)"></span>
+                                        </button>
+                                    </template>
+                                </div>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-xs font-medium text-slate-500 lg:hidden" :for="'qty-' + index">{{ __('sales.qty') }}</label>

@@ -21,6 +21,17 @@ test('new sale page renders for authenticated users', function () {
     $response->assertSee(route('sales.invoice_preview'));
 });
 
+test('new sale page product picker points at the product lookup endpoint', function () {
+    $user = User::factory()->create();
+
+    $response = $this->actingAs($user)->get('/sales/create');
+
+    $response->assertOk();
+    $response->assertSee(route('products.lookup'));
+    $response->assertSee(__('sales.search_product'));
+    $response->assertDontSee(__('sales.select_product'));
+});
+
 test('invoice print preview renders both paper layouts', function () {
     $user = User::factory()->create();
 

@@ -8,7 +8,7 @@ return [
     'add_item' => 'Add item',
     'remove_item' => 'Remove item',
     'product' => 'Product',
-    'select_product' => 'Select a product',
+    'search_product' => 'Search by name, code, SKU or barcode',
     'qty' => 'Qty',
     'unit_price' => 'Unit price',
     'discount' => 'Discount',
