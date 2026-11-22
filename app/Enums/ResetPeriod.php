@@ -8,6 +8,7 @@ enum ResetPeriod: string
     case WEEKLY = 'weekly';
     case MONTHLY = 'monthly';
     case YEARLY = 'yearly';
+    case NEVER = 'never';
 
     public function label(): string
     {
@@ -16,6 +17,7 @@ enum ResetPeriod: string
             self::WEEKLY => __('ResetPeriod.Weekly'),
             self::MONTHLY => __('ResetPeriod.Monthly'),
             self::YEARLY => __('ResetPeriod.Yearly'),
+            self::NEVER => __('ResetPeriod.Never'),
         };
     }
 }

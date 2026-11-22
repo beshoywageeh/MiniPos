@@ -5,6 +5,8 @@ namespace App\Models;
 use App\Enums\DocumentStatus;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Sale extends Model
 {
@@ -12,6 +14,7 @@ class Sale extends Model
 
     /** @var list<string> */
     protected $fillable = [
+        'document_number',
         'party_id',
         'warehouse_id',
         'invoice_date',
@@ -33,21 +36,33 @@ class Sale extends Model
         'status' => DocumentStatus::class,
     ];
 
+    /**
+     * @return BelongsTo<Party, $this>
+     */
     public function party()
     {
         return $this->belongsTo(Party::class);
     }
 
+    /**
+     * @return BelongsTo<Warehouse, $this>
+     */
     public function warehouse()
     {
         return $this->belongsTo(Warehouse::class);
     }
 
+    /**
+     * @return HasMany<SaleItem, $this>
+     */
     public function items()
     {
         return $this->hasMany(SaleItem::class);
     }
 
+    /**
+     * @return HasMany<Payment, $this>
+     */
     public function payments()
     {
         return $this->hasMany(Payment::class);

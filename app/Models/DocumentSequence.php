@@ -3,10 +3,13 @@
 namespace App\Models;
 
 use App\Enums\ResetPeriod;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class DocumentSequence extends Model
 {
+    use HasFactory;
+
     /** @var list<string> */
     protected $fillable = [
         'document_type',
@@ -19,5 +22,6 @@ class DocumentSequence extends Model
 
     protected $casts = [
         'reset_period' => ResetPeriod::class,
+        'last_reset_at' => 'datetime',
     ];
 }
