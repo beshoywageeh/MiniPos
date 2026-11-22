@@ -13,6 +13,7 @@ Route::group(['middleware' => ['auth']], function () {
     Route::livewire('/users', 'livewire.users.index')->name('users.index');
     Route::livewire('/categories', 'livewire.catalog.categories.index')->name('categories.index');
     Route::livewire('/brands', 'livewire.catalog.brands.index')->name('brands.index');
+    Route::livewire('/products', 'livewire.catalog.products.index')->name('products.index');
     Route::livewire('/units', 'livewire.unit.index')->name('units.index');
     Route::livewire('/parties', 'livewire.party.index')->name('parties.index');
 
