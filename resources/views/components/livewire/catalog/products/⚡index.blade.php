@@ -36,6 +36,7 @@ new class extends Component {
     #[On('product-created')]
     #[On('product-updated')]
     #[On('product-deleted')]
+    #[On('product-adjusted')]
     public function refreshList(): void
     {
         //
@@ -46,7 +47,8 @@ new class extends Component {
 <div class="mx-auto max-w-7xl space-y-6" x-data="{ flash: false, flashMessage: '' }"
     @product-created.window="flashMessage = @js(__('products.created')); flash = true; setTimeout(() => flash = false, 3000)"
     @product-updated.window="flashMessage = @js(__('products.updated')); flash = true; setTimeout(() => flash = false, 3000)"
-    @product-deleted.window="flashMessage = @js(__('products.deleted')); flash = true; setTimeout(() => flash = false, 3000)">
+    @product-deleted.window="flashMessage = @js(__('products.deleted')); flash = true; setTimeout(() => flash = false, 3000)"
+    @product-adjusted.window="flashMessage = @js(__('products.adjusted')); flash = true; setTimeout(() => flash = false, 3000)">
     <div x-show="flash" x-cloak x-transition.opacity
         class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
         <span x-text="flashMessage"></span>
@@ -80,7 +82,9 @@ new class extends Component {
                 <tr class="transition hover:bg-slate-50" wire:key="product-{{ $product->id }}">
                     <x-table.td class="text-slate-500">{{ $loop->index + 1 }}</x-table.td>
                     <x-table.td class="text-slate-500">{{ $product->code }}</x-table.td>
-                    <x-table.td class="font-medium text-slate-900">{{ $product->name }}</x-table.td>
+                    <x-table.td class="font-medium text-slate-900">
+                        <a href="{{ route('products.show', $product) }}" class="hover:text-indigo-600">{{ $product->name }}</a>
+                    </x-table.td>
                     <x-table.td class="text-slate-600">{{ $product->category?->name ?? '—' }}</x-table.td>
                     <x-table.td class="text-slate-600">{{ $product->brand?->name ?? '—' }}</x-table.td>
                     <x-table.td class="text-slate-600">{{ $product->unit?->name ?? '—' }}</x-table.td>
@@ -106,6 +110,8 @@ new class extends Component {
                         </x-badge>
                     </x-table.td>
                     <x-table.td>
+                        <livewire:livewire.catalog.products.actions.adjust :product="$product"
+                            wire:key="product-adjust-{{ $product->id }}" />
                         <livewire:livewire.catalog.products.actions.update :product="$product"
                             wire:key="product-update-{{ $product->id }}" />
                         <livewire:livewire.catalog.products.actions.delete :product="$product"

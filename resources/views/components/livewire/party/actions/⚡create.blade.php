@@ -36,9 +36,7 @@ new class extends Component {
     #[Computed]
     public function typeOptions(): array
     {
-        return collect(PartyType::cases())
-            ->mapWithKeys(fn (PartyType $type): array => [$type->value => $type->label()])
-            ->all();
+        return collect(PartyType::cases())->mapWithKeys(fn(PartyType $type): array => [$type->value => $type->label()])->all();
     }
 
     #[Computed]
@@ -89,12 +87,12 @@ new class extends Component {
                     stroke="currentColor" class="h-5 w-5">
                     <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
                 </svg>
-                {{ __('parties.add') }}
+                {{ __('general.add') }}
             </x-button>
         </x-slot:trigger>
 
         <x-slot:title>
-            {{ __('parties.add') }}
+            {{ __('general.add') }}
         </x-slot:title>
 
         <form class="space-y-4" wire:submit="create">
@@ -102,8 +100,7 @@ new class extends Component {
                 <x-form.input name="code" wire:model="code" :label="__('parties.code')" />
                 <x-form.input name="name" wire:model="name" :label="__('parties.name')" />
                 <x-form.input name="phone" wire:model="phone" :label="__('parties.phone')" />
-                <x-form.select name="type" wire:model="type" :label="__('parties.type')" :options="$this->typeOptions"
-                    :selected="$type" />
+                <x-form.select name="type" wire:model="type" :label="__('parties.type')" :options="$this->typeOptions" :selected="$type" />
             </div>
 
             <x-form.textarea name="address" wire:model="address" :label="__('parties.address')" />
@@ -114,8 +111,8 @@ new class extends Component {
 
                 <div class="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">
                     @forelse ($this->brandOptions as $brand)
-                        <x-form.checkbox :name="'brands[]'" :id="'brand-'.$brand->id" :value="$brand->id"
-                            wire:model="brands" :label="$brand->name" wire:key="brand-option-{{ $brand->id }}" />
+                        <x-form.checkbox :name="'brands[]'" :id="'brand-' . $brand->id" :value="$brand->id" wire:model="brands"
+                            :label="$brand->name" wire:key="brand-option-{{ $brand->id }}" />
                     @empty
                         <p class="text-sm text-slate-500">{{ __('parties.no_brands') }}</p>
                     @endforelse
