@@ -10,7 +10,6 @@ use App\Enums\PaymentMethod;
 use App\Enums\PaymentType;
 use App\Models\Brand;
 use App\Models\Cashbox;
-use App\Models\DocumentSequence;
 use App\Models\Expense;
 use App\Models\Party;
 use App\Models\Payment;
@@ -22,6 +21,7 @@ use App\Models\SalesReturn;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Support\DocumentNumber;
 use Database\Factories\PartyFactory;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Collection;
@@ -142,7 +142,7 @@ class DemoDataSeeder extends Seeder
         $invoiceDate = fake()->dateTimeBetween('-90 days');
 
         $purchase = Purchase::query()->create([
-            'document_number' => $this->nextDocumentNumber('purchase'),
+            'document_number' => DocumentNumber::next('purchase'),
             'party_id' => $supplier->id,
             'warehouse_id' => $warehouse->id,
             'invoice_date' => $invoiceDate,
@@ -222,7 +222,7 @@ class DemoDataSeeder extends Seeder
         $invoiceDate = fake()->dateTimeBetween('-60 days');
 
         $sale = Sale::query()->create([
-            'document_number' => $this->nextDocumentNumber('sale'),
+            'document_number' => DocumentNumber::next('sale'),
             'party_id' => $customer->id,
             'warehouse_id' => $warehouse->id,
             'invoice_date' => $invoiceDate,
@@ -281,7 +281,7 @@ class DemoDataSeeder extends Seeder
         $isPurchase = $document instanceof Purchase;
 
         Payment::query()->create([
-            'document_number' => $this->nextDocumentNumber('payment'),
+            'document_number' => DocumentNumber::next('payment'),
             'party_id' => $document->party_id,
             'cashbox_id' => $cashbox->id,
             'sale_id' => $isPurchase ? null : $document->id,
@@ -309,7 +309,7 @@ class DemoDataSeeder extends Seeder
         $returnAmount = round($quantity * (float) $item->unit_price, 2);
 
         $purchaseReturn = PurchaseReturn::query()->create([
-            'document_number' => $this->nextDocumentNumber('purchase_return'),
+            'document_number' => DocumentNumber::next('purchase_return'),
             'purchase_id' => $purchase->id,
             'party_id' => $purchase->party_id,
             'warehouse_id' => $purchase->warehouse_id,
@@ -354,7 +354,7 @@ class DemoDataSeeder extends Seeder
         $returnAmount = round($quantity * (float) $item->unit_price, 2);
 
         $salesReturn = SalesReturn::query()->create([
-            'document_number' => $this->nextDocumentNumber('sales_return'),
+            'document_number' => DocumentNumber::next('sales_return'),
             'sale_id' => $sale->id,
             'party_id' => $sale->party_id,
             'warehouse_id' => $sale->warehouse_id,
@@ -391,7 +391,7 @@ class DemoDataSeeder extends Seeder
     private function seedExpense(Cashbox $cashbox, User $user): void
     {
         $expense = Expense::query()->create([
-            'document_number' => $this->nextDocumentNumber('expense'),
+            'document_number' => DocumentNumber::next('expense'),
             'expense_category' => fake()->randomElement(ExpenseCategory::cases()),
             'cashbox_id' => $cashbox->id,
             'amount' => fake()->randomFloat(2, 20, 500),
@@ -401,7 +401,7 @@ class DemoDataSeeder extends Seeder
         ]);
 
         Payment::query()->create([
-            'document_number' => $this->nextDocumentNumber('payment'),
+            'document_number' => DocumentNumber::next('payment'),
             'cashbox_id' => $cashbox->id,
             'expense_id' => $expense->id,
             'type' => PaymentType::payment,
@@ -426,19 +426,5 @@ class DemoDataSeeder extends Seeder
             $roll <= 90 => [DocumentStatus::PARTIAL, round($totalAmount * fake()->randomFloat(2, 0.3, 0.7), 2)],
             default => [DocumentStatus::PENDING, 0.0],
         };
-    }
-
-    /**
-     * Generate the next document number for a document type, advancing its sequence.
-     */
-    private function nextDocumentNumber(string $documentType): string
-    {
-        $sequence = DocumentSequence::query()->where('document_type', $documentType)->firstOrFail();
-
-        $documentNumber = sprintf('%s-%06d', $sequence->prefix, $sequence->next_number);
-
-        $sequence->increment('next_number');
-
-        return $documentNumber;
     }
 }

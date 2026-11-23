@@ -1,8 +1,12 @@
 <?php
 
+use App\Enums\DocumentStatus;
 use App\Enums\ResetPeriod;
 use App\Models\DocumentSequence;
+use App\Models\Party;
+use App\Models\Sale;
 use App\Models\User;
+use App\Models\Warehouse;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -90,4 +94,23 @@ test('editing a sequence validates prefix, padding and reset period', function (
             'resetPeriod' => 'in',
         ])
         ->assertNotDispatched('document-sequence-updated');
+});
+
+test('a sale accepts a document number through mass assignment', function () {
+    $sale = Sale::create([
+        'document_number' => 'SALE-000042',
+        'party_id' => Party::factory()->customer()->create()->id,
+        'warehouse_id' => Warehouse::factory()->create()->id,
+        'invoice_date' => now(),
+        'subtotal' => 10,
+        'discount_amount' => 0,
+        'tax_amount' => 0,
+        'total_amount' => 10,
+        'paid_amount' => 10,
+        'remaining_amount' => 0,
+        'status' => DocumentStatus::PAID,
+        'created_by' => User::factory()->create()->id,
+    ]);
+
+    expect($sale->refresh()->document_number)->toBe('SALE-000042');
 });
