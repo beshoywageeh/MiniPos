@@ -47,17 +47,18 @@ new class extends Component {
         Settings::set('invoice_footer', $validated['invoiceFooter'] ?? '', 'string');
 
         $this->saved = true;
+
+        $this->dispatch('settings-saved');
     }
 };
 ?>
 
-<div class="mx-auto max-w-7xl space-y-6">
-    @if ($saved)
-        <div x-data="{ show: true }" x-init="setTimeout(() => show = false, 3000)" x-show="show" x-transition.opacity
-            class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-            {{ __('settings.saved') }}
-        </div>
-    @endif
+<div class="mx-auto max-w-7xl space-y-6" x-data="{ show: false }"
+    @settings-saved.window="show = true; setTimeout(() => show = false, 3000)">
+    <div x-show="show" x-cloak x-transition.opacity
+        class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+        {{ __('settings.saved') }}
+    </div>
 
     <x-page-header :title="__('settings.title')" :subtitle="__('settings.subtitle')" />
 

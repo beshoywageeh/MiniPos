@@ -102,6 +102,7 @@ test('saving persists every settings field with its type', function () {
         ->set('invoiceFooter', 'Thank you for shopping')
         ->call('save')
         ->assertSet('saved', true)
+        ->assertDispatched('settings-saved')
         ->assertHasNoErrors();
 
     expect(Settings::get('company_name'))->toBe('Acme Store')
@@ -111,6 +112,25 @@ test('saving persists every settings field with its type', function () {
         ->and(Settings::get('tax_rate'))->toBe('7.5')
         ->and(Settings::get('invoice_footer'))->toBe('Thank you for shopping')
         ->and(Setting::where('key', 'tax_rate')->value('type'))->toBe('decimal');
+});
+
+test('saving blank optional fields stores empty strings', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)->test('livewire.settings.index')
+        ->set('companyName', 'Acme Store')
+        ->set('companyPhone', '')
+        ->set('companyAddress', '')
+        ->set('invoiceFooter', '')
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Settings::get('company_phone'))->toBe('')
+        ->and(Settings::get('company_address'))->toBe('')
+        ->and(Settings::get('invoice_footer'))->toBe('')
+        ->and(Setting::where('key', 'company_phone')->value('value'))->toBe('')
+        ->and(Setting::where('key', 'company_address')->value('value'))->toBe('')
+        ->and(Setting::where('key', 'invoice_footer')->value('value'))->toBe('');
 });
 
 test('saving rejects an empty company name and an out-of-range tax rate', function () {
