@@ -2,15 +2,16 @@
 
 namespace App\Enums;
 
-enum ProductType
+enum ProductType: string
 {
-    case PRODUCT;
-    case SERVICE;
+    case Product = 'product';
+    case Service = 'service';
+
     public function label(): string
     {
         return match ($this) {
-            self::PRODUCT => __('ProductType.Product'),
-            self::SERVICE => __('ProductType.Service'),
+            self::Product => __('ProductType.Product'),
+            self::Service => __('ProductType.Service'),
         };
     }
 }

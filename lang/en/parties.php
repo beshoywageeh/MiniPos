@@ -1,0 +1,27 @@
+<?php
+
+return [
+    'title' => 'Parties',
+    'subtitle' => 'Manage your customers and suppliers.',
+    'add' => 'Add Party',
+    'edit' => 'Edit Party',
+    'delete' => 'Delete Party',
+    'search' => 'Search',
+    'created' => 'Party created successfully.',
+    'updated' => 'Party updated successfully.',
+    'deleted' => 'Party deleted successfully.',
+    'code' => 'Code',
+    'name' => 'Name',
+    'phone' => 'Phone',
+    'address' => 'Address',
+    'note' => 'Note',
+    'type' => 'Type',
+    'active' => 'Active',
+    'brands' => 'Brands',
+    'no_brands' => 'No brands available.',
+    'no_records' => 'No parties found.',
+    'delete_confirm' => 'Are you sure you want to delete',
+    'customer' => 'Customer',
+    'supplier' => 'Supplier',
+    'both' => 'Customer & Supplier',
+];

@@ -1,0 +1,540 @@
+<?php
+
+use App\Enums\DocumentStatus;
+use App\Enums\MovementType;
+use App\Enums\PartyType;
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentType;
+use App\Models\Cashbox;
+use App\Models\Party;
+use App\Models\Payment;
+use App\Models\Product;
+use App\Models\Sale;
+use App\Models\StockMovement;
+use App\Models\Warehouse;
+use App\Support\DocumentNumber;
+use App\Support\ProductMatcher;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
+use Livewire\Attributes\Computed;
+use Livewire\Component;
+
+new class extends Component {
+    public int|string $partyId = '';
+
+    public int|string $warehouseId = '';
+
+    public string $invoiceDate = '';
+
+    public string $dueDate = '';
+
+    public string $notes = '';
+
+    public bool $isDraft = false;
+
+    public string $paymentMethod = '';
+
+    public int|string $cashboxId = '';
+
+    public string $paidAmount = '';
+
+    /** @var list<array<string, mixed>> */
+    public array $items = [];
+
+    public string $searchTerm = '';
+
+    public ?int $searchingItemIndex = null;
+
+    /** @var list<array<string, mixed>> */
+    public array $searchResults = [];
+
+    public function mount(): void
+    {
+        $this->invoiceDate = today()->format('Y-m-d');
+        $this->dueDate = today()->addDays(14)->format('Y-m-d');
+        $this->paymentMethod = PaymentMethod::CASH->value;
+        $this->addItem();
+    }
+
+    public function addItem(): void
+    {
+        $this->items[] = [
+            'product_id' => null,
+            'product_name' => '',
+            'quantity' => '1',
+            'unit_price' => '',
+            'discount_amount' => '',
+            'tax_rate' => '',
+        ];
+    }
+
+    public function removeItem(int $index): void
+    {
+        unset($this->items[$index]);
+        $this->items = array_values($this->items);
+    }
+
+    public function updatedSearchTerm(): void
+    {
+        $this->searchResults = collect(ProductMatcher::search($this->searchTerm))
+            ->map(fn (Product $product): array => [
+                'id' => $product->id,
+                'name' => $product->name,
+                'code' => $product->code,
+                'sku' => $product->sku,
+                'selling_price' => (float) $product->selling_price,
+            ])
+            ->all();
+    }
+
+    public function pickProduct(int $index, int $productId): void
+    {
+        $result = collect($this->searchResults)->firstWhere('id', $productId);
+
+        if ($result === null) {
+            return;
+        }
+
+        $this->items[$index]['product_id'] = $result['id'];
+        $this->items[$index]['product_name'] = $result['name'];
+        $this->items[$index]['unit_price'] = (string) $result['selling_price'];
+        $this->searchTerm = '';
+        $this->searchResults = [];
+        $this->searchingItemIndex = null;
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    #[Computed]
+    public function customerOptions(): array
+    {
+        return ['' => __('sales.no_customer')]
+            + Party::query()
+                ->where('is_active', true)
+                ->whereIn('type', [PartyType::CUSTOMER, PartyType::BOTH])
+                ->orderBy('name')
+                ->pluck('name', 'id')
+                ->all();
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    #[Computed]
+    public function warehouseOptions(): array
+    {
+        return Warehouse::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    /**
+     * @return array<int|string, string>
+     */
+    #[Computed]
+    public function cashboxOptions(): array
+    {
+        return Cashbox::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all();
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function paymentMethodOptions(): array
+    {
+        return collect(PaymentMethod::cases())
+            ->mapWithKeys(fn (PaymentMethod $method): array => [$method->value => $method->label()])
+            ->all();
+    }
+
+    #[Computed]
+    public function subtotal(): float
+    {
+        return $this->lineSubtotalSum();
+    }
+
+    #[Computed]
+    public function discountTotal(): float
+    {
+        return round($this->collectItems(fn (array $item): float => (float) ($item['discount_amount'] ?: 0)), 2);
+    }
+
+    #[Computed]
+    public function taxTotal(): float
+    {
+        return round($this->collectItems(function (array $item): float {
+            $base = $this->lineBase($item);
+
+            return $base * (float) ($item['tax_rate'] ?: 0) / 100;
+        }), 2);
+    }
+
+    #[Computed]
+    public function grandTotal(): float
+    {
+        return round($this->subtotal - $this->discountTotal + $this->taxTotal, 2);
+    }
+
+    #[Computed]
+    public function dueAmount(): float
+    {
+        return round($this->grandTotal - $this->paidFloat(), 2);
+    }
+
+    public function save(): void
+    {
+        $this->validate();
+
+        $total = $this->grandTotal;
+        $paid = $this->isDraft ? 0.0 : $this->paidFloat();
+
+        if (! $this->isDraft && $paid > $total) {
+            $this->addError('paidAmount', __('sales.paid_exceeds_total'));
+
+            return;
+        }
+
+        $sale = DB::transaction(function () use ($paid, $total): Sale {
+            $products = Product::query()
+                ->whereIn('id', collect($this->items)->pluck('product_id'))
+                ->get()
+                ->keyBy('id');
+
+            $sale = Sale::query()->create([
+                'document_number' => DocumentNumber::next('sale'),
+                'party_id' => $this->partyId !== '' ? $this->partyId : null,
+                'warehouse_id' => $this->warehouseId,
+                'invoice_date' => $this->invoiceDate,
+                'due_date' => $this->dueDate !== '' ? $this->dueDate : null,
+                'subtotal' => $this->subtotal,
+                'discount_amount' => $this->discountTotal,
+                'tax_amount' => $this->taxTotal,
+                'total_amount' => $total,
+                'paid_amount' => $paid,
+                'remaining_amount' => round($total - $paid, 2),
+                'status' => $this->deriveStatus($paid, $total),
+                'notes' => $this->notes,
+                'created_by' => Auth::id(),
+            ]);
+
+            $sale->items()->createMany($this->buildSaleItems($products));
+
+            if ($this->isDraft) {
+                return $sale;
+            }
+
+            foreach ($sale->items as $item) {
+                StockMovement::query()->create([
+                    'product_id' => $item->product_id,
+                    'warehouse_id' => $sale->warehouse_id,
+                    'movement_type' => MovementType::OUT,
+                    'quantity' => $item->quantity,
+                    'unit_cost' => $item->cost_price,
+                    'reference_type' => Sale::class,
+                    'reference_id' => $sale->id,
+                    'movement_date' => $sale->invoice_date,
+                    'created_by' => Auth::id(),
+                ]);
+            }
+
+            if ($paid > 0) {
+                Payment::query()->create([
+                    'document_number' => DocumentNumber::next('payment'),
+                    'party_id' => $sale->party_id,
+                    'cashbox_id' => $this->cashboxId,
+                    'sale_id' => $sale->id,
+                    'type' => PaymentType::recipt,
+                    'method' => $this->paymentMethod,
+                    'amount' => $paid,
+                    'payment_date' => $sale->invoice_date,
+                    'created_by' => Auth::id(),
+                ]);
+            }
+
+            return $sale;
+        });
+
+        session()->flash('sale-created', __('sales.created').': '.$sale->document_number);
+
+        $this->redirectRoute('sales.create', navigate: true);
+    }
+
+    /**
+     * @return array<string, list<mixed>>
+     */
+    protected function rules(): array
+    {
+        $requiresPaymentDetails = ! $this->isDraft && $this->paidFloat() > 0;
+
+        return [
+            'partyId' => ['nullable', 'integer', 'exists:parties,id'],
+            'warehouseId' => ['required', 'integer', 'exists:warehouses,id'],
+            'invoiceDate' => ['required', 'date'],
+            'dueDate' => ['nullable', 'date', 'after_or_equal:invoiceDate'],
+            'items' => ['required', 'array', 'min:1'],
+            'items.*.product_id' => ['required', 'integer', 'exists:products,id'],
+            'items.*.quantity' => ['required', 'numeric', 'min:0.001'],
+            'items.*.unit_price' => ['required', 'numeric', 'min:0'],
+            'items.*.discount_amount' => ['nullable', 'numeric', 'min:0'],
+            'items.*.tax_rate' => ['nullable', 'numeric', 'min:0'],
+            'isDraft' => ['boolean'],
+            'paymentMethod' => [Rule::requiredIf($requiresPaymentDetails), Rule::in(array_column(PaymentMethod::cases(), 'value'))],
+            'cashboxId' => [Rule::requiredIf($requiresPaymentDetails), 'integer', 'exists:cashboxes,id'],
+            'paidAmount' => ['nullable', 'numeric', 'min:0'],
+        ];
+    }
+
+    private function deriveStatus(float $paid, float $total): DocumentStatus
+    {
+        if ($this->isDraft) {
+            return DocumentStatus::DRAFT;
+        }
+
+        return match (true) {
+            $paid >= $total => DocumentStatus::PAID,
+            $paid > 0 => DocumentStatus::PARTIAL,
+            default => DocumentStatus::PENDING,
+        };
+    }
+
+    /**
+     * @param  \Illuminate\Database\Eloquent\Collection<int, Product>  $products
+     * @return list<array<string, mixed>>
+     */
+    private function buildSaleItems($products): array
+    {
+        return collect($this->items)
+            ->map(fn (array $item): array => [
+                'product_id' => $item['product_id'],
+                'product_name' => $products[$item['product_id']]->name,
+                'sku' => $products[$item['product_id']]->sku,
+                'quantity' => $item['quantity'],
+                'unit_price' => $item['unit_price'],
+                'cost_price' => $products[$item['product_id']]->purchase_price,
+                'discount_amount' => $item['discount_amount'] !== '' ? $item['discount_amount'] : 0,
+                'tax_amount' => round($this->lineBase($item) * (float) ($item['tax_rate'] ?: 0) / 100, 2),
+                'line_total' => round($this->lineBase($item) + $this->lineBase($item) * (float) ($item['tax_rate'] ?: 0) / 100, 2),
+            ])
+            ->all();
+    }
+
+    /**
+     * @param  callable(array<string, mixed>): float  $callback
+     * @return float
+     */
+    private function collectItems($callback): float
+    {
+        return collect($this->items)->sum($callback);
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    private function lineBase(array $item): float
+    {
+        return round((float) $item['quantity'] * (float) $item['unit_price'] - (float) ($item['discount_amount'] ?: 0), 2);
+    }
+
+    private function lineSubtotalSum(): float
+    {
+        return round($this->collectItems(fn (array $item): float => (float) $item['quantity'] * (float) $item['unit_price']), 2);
+    }
+
+    private function paidFloat(): float
+    {
+        return (float) ($this->paidAmount === '' ? 0 : $this->paidAmount);
+    }
+};
+?>
+
+<div class="mx-auto max-w-7xl space-y-6">
+    @if (session('sale-created'))
+        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
+            {{ session('sale-created') }}
+        </div>
+    @endif
+
+    <form wire:submit="save">
+        <x-page-header :title="__('sales.title')" :subtitle="__('sales.subtitle')">
+            <x-slot:actions>
+                <x-button variant="secondary" :href="route('sales.invoice_preview')" wire:navigate>
+                    {{ __('sales.preview_invoice') }}
+                </x-button>
+                <x-button type="submit" wire:loading.attr="disabled">
+                    {{ __('sales.save') }}
+                </x-button>
+            </x-slot:actions>
+        </x-page-header>
+
+        <x-card :title="__('sales.details')">
+            <div class="grid grid-cols-1 gap-4 p-5 sm:grid-cols-2 lg:grid-cols-4">
+                <x-form.select name="partyId" wire:model="partyId" :label="__('sales.customer')"
+                    :options="$this->customerOptions" :selected="$partyId" />
+                <x-form.select name="warehouseId" wire:model="warehouseId" :label="__('sales.warehouse')"
+                    :options="$this->warehouseOptions" :selected="$warehouseId" />
+                <x-form.input type="date" name="invoiceDate" wire:model="invoiceDate" :value="$invoiceDate"
+                    :label="__('sales.invoice_date')" />
+                <x-form.input type="date" name="dueDate" wire:model="dueDate" :value="$dueDate"
+                    :label="__('sales.due_date')" />
+                <div class="flex items-end pb-2">
+                    <x-form.checkbox name="isDraft" wire:model.live="isDraft" :label="__('sales.draft')"
+                        :checked="$isDraft" />
+                </div>
+            </div>
+        </x-card>
+
+        <x-card :title="__('sales.items')">
+            @slot('actions')
+                <button
+                    type="button"
+                    wire:click="addItem"
+                    class="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-600 transition hover:bg-indigo-100 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                        stroke="currentColor" class="h-4 w-4">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                    </svg>
+                    {{ __('sales.add_item') }}
+                </button>
+            @endslot
+
+            <div class="hidden px-5 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 lg:grid lg:grid-cols-12 lg:gap-3">
+                <span class="col-span-4">{{ __('sales.product') }}</span>
+                <span class="col-span-1">{{ __('sales.qty') }}</span>
+                <span class="col-span-2">{{ __('sales.unit_price') }}</span>
+                <span class="col-span-2">{{ __('sales.discount') }}</span>
+                <span class="col-span-1">{{ __('sales.tax') }} %</span>
+                <span class="col-span-1 text-right">{{ __('dashboard.total') }}</span>
+                <span class="col-span-1"></span>
+            </div>
+
+            <div class="space-y-3 px-5 pb-5">
+                @foreach ($items as $index => $item)
+                    <div class="grid grid-cols-2 items-end gap-3 rounded-lg border border-slate-100 p-3 sm:grid-cols-6 lg:grid-cols-12 lg:border-0 lg:p-0"
+                        wire:key="sale-item-{{ $index }}">
+                        <div class="col-span-2 sm:col-span-6 lg:col-span-4">
+                            <label class="block text-xs font-medium text-slate-500 lg:hidden"
+                                for="product-{{ $index }}">{{ __('sales.product') }}</label>
+                            <div class="relative">
+                                @if ($item['product_id'])
+                                    <div class="mb-1 flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700">
+                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                            stroke="currentColor" class="h-4 w-4 shrink-0">
+                                            <path stroke-linecap="round" stroke-linejoin="round"
+                                                d="m4.5 12.75 6 6 9-13.5" />
+                                        </svg>
+                                        <span class="truncate">{{ $item['product_name'] }}</span>
+                                    </div>
+                                @endif
+                                <input
+                                    type="text"
+                                    id="product-{{ $index }}"
+                                    wire:model.live.debounce.400ms="searchTerm"
+                                    wire:focus="$wire.set('searchingItemIndex', {{ $index }})"
+                                    autocomplete="off"
+                                    placeholder="{{ __('sales.search_product') }}"
+                                    class="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
+                                />
+                                @if ($this->searchingItemIndex === $index && count($this->searchResults) > 0)
+                                    <div class="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                                        @foreach ($this->searchResults as $result)
+                                            <button
+                                                type="button"
+                                                wire:mousedown.prevent="pickProduct({{ $index }}, {{ $result['id'] }})"
+                                                class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-indigo-50"
+                                                wire:key="search-result-{{ $result['id'] }}"
+                                            >
+                                                <span class="min-w-0">
+                                                    <span class="block truncate font-medium text-slate-900">{{ $result['name'] }}</span>
+                                                    <span class="block truncate text-xs text-slate-500">{{ $result['code'] }}{{ $result['sku'] ? ' · '.$result['sku'] : '' }}</span>
+                                                </span>
+                                                <span class="shrink-0 text-xs font-semibold text-slate-700">{{ number_format($result['selling_price'], 2) }}</span>
+                                            </button>
+                                        @endforeach
+                                    </div>
+                                @endif
+                            </div>
+                        </div>
+                        <div>
+                            <x-form.input type="number" min="0" step="0.001" name="items.{{ $index }}.quantity"
+                                wire:model.live.debounce.300ms="items.{{ $index }}.quantity" :label="__('sales.qty')" />
+                        </div>
+                        <div>
+                            <x-form.input type="number" min="0" step="0.01" name="items.{{ $index }}.unit_price"
+                                wire:model.live.debounce.300ms="items.{{ $index }}.unit_price" :label="__('sales.unit_price')" />
+                        </div>
+                        <div>
+                            <x-form.input type="number" min="0" step="0.01" name="items.{{ $index }}.discount_amount"
+                                wire:model.live.debounce.300ms="items.{{ $index }}.discount_amount" :label="__('sales.discount')" />
+                        </div>
+                        <div>
+                            <x-form.input type="number" min="0" step="0.01" name="items.{{ $index }}.tax_rate"
+                                wire:model.live.debounce.300ms="items.{{ $index }}.tax_rate" :label="__('sales.tax').' %'" />
+                        </div>
+                        @php
+                            $lineBase = (float) $item['quantity'] * (float) $item['unit_price'] - (float) ($item['discount_amount'] ?: 0);
+                            $lineTotal = $lineBase + $lineBase * (float) ($item['tax_rate'] ?: 0) / 100;
+                        @endphp
+                        <div class="text-sm font-semibold text-slate-900 sm:text-right">
+                            {{ number_format($lineTotal, 2) }}
+                        </div>
+                        <div class="sm:text-right">
+                            <button
+                                type="button"
+                                wire:click="removeItem({{ $index }})"
+                                wire:loading.attr="disabled"
+                                class="inline-flex h-8 w-8 items-center justify-center rounded-lg text-rose-500 transition hover:bg-rose-50 hover:text-rose-600 focus:outline-none focus:ring-2 focus:ring-rose-500/30"
+                                aria-label="{{ __('sales.remove_item') }}"
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                    stroke="currentColor" class="h-5 w-5">
+                                    <path stroke-linecap="round" stroke-linejoin="round"
+                                        d="m14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0" />
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+        </x-card>
+
+        <div class="grid grid-cols-1 gap-4 lg:grid-cols-3">
+            <x-card :title="__('dashboard.notes')" class="lg:col-span-2">
+                <div class="p-5">
+                    <x-form.textarea name="notes" wire:model="notes" :label="__('sales.notes')"
+                        :help="__('sales.notes_help')" />
+                </div>
+            </x-card>
+
+            <x-card :title="__('sales.summary')">
+                <div class="space-y-2 p-5 text-sm">
+                    <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.subtotal') }}</span><span
+                            class="font-medium text-slate-900">{{ number_format($this->subtotal, 2) }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.discount') }}</span><span
+                            class="font-medium text-slate-900">-{{ number_format($this->discountTotal, 2) }}</span></div>
+                    <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.tax') }}</span><span
+                            class="font-medium text-slate-900">{{ number_format($this->taxTotal, 2) }}</span></div>
+                    <div class="flex justify-between border-t border-slate-200 pt-2 text-base"><span
+                            class="font-semibold text-slate-900">{{ __('sales.grand_total') }}</span><span
+                            class="font-bold text-slate-900">{{ number_format($this->grandTotal, 2) }}</span></div>
+                </div>
+                @unless ($isDraft)
+                    <div class="space-y-4 border-t border-slate-200 p-5 pt-4">
+                        <x-form.select name="paymentMethod" wire:model="paymentMethod"
+                            :label="__('sales.payment_method')" :options="$this->paymentMethodOptions"
+                            :selected="$paymentMethod" />
+                        <x-form.select name="cashboxId" wire:model="cashboxId" :label="__('sales.cashbox')"
+                            :options="$this->cashboxOptions" :selected="$cashboxId" />
+                        <x-form.input type="number" min="0" step="0.01" name="paidAmount"
+                            wire:model.live.debounce.300ms="paidAmount" :label="__('sales.paid_amount')" />
+                        <div class="flex justify-between rounded-lg bg-rose-50 px-3 py-2 text-sm">
+                            <span class="font-medium text-rose-700">{{ __('sales.due_amount') }}</span>
+                            <span class="font-bold text-rose-700">{{ number_format($this->dueAmount, 2) }}</span>
+                        </div>
+                    </div>
+                @endunless
+            </x-card>
+        </div>
+    </form>
+</div>

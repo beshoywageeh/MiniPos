@@ -2,11 +2,12 @@
 
 namespace App\Enums;
 
-enum PartyType
+enum PartyType: string
 {
-    case CUSTOMER;
-    case SUPPLIER;
-    case BOTH;
+    case CUSTOMER = 'customer';
+    case SUPPLIER = 'supplier';
+    case BOTH = 'both';
+
     public function label(): string
     {
         return match ($this) {
