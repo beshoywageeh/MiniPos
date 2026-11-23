@@ -31,5 +31,6 @@ return [
     'nav_expenses' => 'Expenses',
     'nav_reports' => 'Reports',
     'nav_settings' => 'Settings',
+    'nav_document_sequences' => 'Document Sequences',
     'nav_units' => 'unit',
 ];
