@@ -105,12 +105,16 @@ class TestSeeder extends Seeder
 
         // Application settings
         collect([
-            'company_name' => 'MiniPOS Store',
-            'currency' => 'USD',
-            'tax_rate' => '10',
-        ])->each(fn (string $value, string $key): Setting => Setting::firstOrCreate([
-            'key' => $key,
-        ], ['value' => $value, 'type' => 'string', 'group' => 'general']));
+            ['key' => 'company_name', 'value' => 'MiniPOS Store', 'type' => 'string'],
+            ['key' => 'company_phone', 'value' => '', 'type' => 'string'],
+            ['key' => 'company_address', 'value' => '', 'type' => 'string'],
+            ['key' => 'currency', 'value' => 'USD', 'type' => 'string'],
+            ['key' => 'tax_rate', 'value' => '10', 'type' => 'decimal'],
+            ['key' => 'invoice_footer', 'value' => '', 'type' => 'string'],
+        ])->each(fn (array $setting): Setting => Setting::firstOrCreate(
+            ['key' => $setting['key']],
+            ['value' => $setting['value'], 'type' => $setting['type'], 'group' => 'general'],
+        ));
     }
 
     /**

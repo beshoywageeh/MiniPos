@@ -38,7 +38,7 @@ describe('TestSeeder', function () {
             ->and(Brand::count())->toBe(2)
             ->and(Party::count())->toBe(2)
             ->and(Product::count())->toBe(4)
-            ->and(Setting::count())->toBe(3)
+            ->and(Setting::count())->toBe(6)
             ->and(DocumentSequence::where('document_type', 'sale')->where('prefix', 'SALE')->exists())->toBeTrue();
     });
 

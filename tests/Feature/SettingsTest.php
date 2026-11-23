@@ -3,7 +3,9 @@
 use App\Models\Setting;
 use App\Models\User;
 use App\Support\Settings;
+use Database\Seeders\TestSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
 
 uses(RefreshDatabase::class);
 
@@ -60,4 +62,67 @@ test('the sidebar links to the settings page', function () {
     $this->actingAs($user)->get(route('dashboard'))
         ->assertOk()
         ->assertSee(route('settings.index'));
+});
+
+test('the settings page loads seeded values', function () {
+    $this->seed(TestSeeder::class);
+
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)->test('livewire.settings.index')
+        ->assertSet('companyName', 'MiniPOS Store')
+        ->assertSet('companyPhone', '')
+        ->assertSet('companyAddress', '')
+        ->assertSet('currency', 'USD')
+        ->assertSet('taxRate', '10')
+        ->assertSet('invoiceFooter', '');
+});
+
+test('the settings page falls back to defaults without stored rows', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)->test('livewire.settings.index')
+        ->assertSet('companyName', 'MiniPOS Store')
+        ->assertSet('currency', 'USD')
+        ->assertSet('taxRate', '0')
+        ->assertSet('companyPhone', '')
+        ->assertSet('companyAddress', '')
+        ->assertSet('invoiceFooter', '');
+});
+
+test('saving persists every settings field with its type', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)->test('livewire.settings.index')
+        ->set('companyName', 'Acme Store')
+        ->set('companyPhone', '+1 555 0100')
+        ->set('companyAddress', '1 Main Street')
+        ->set('currency', 'EUR')
+        ->set('taxRate', '7.5')
+        ->set('invoiceFooter', 'Thank you for shopping')
+        ->call('save')
+        ->assertSet('saved', true)
+        ->assertHasNoErrors();
+
+    expect(Settings::get('company_name'))->toBe('Acme Store')
+        ->and(Settings::get('company_phone'))->toBe('+1 555 0100')
+        ->and(Settings::get('company_address'))->toBe('1 Main Street')
+        ->and(Settings::get('currency'))->toBe('EUR')
+        ->and(Settings::get('tax_rate'))->toBe('7.5')
+        ->and(Settings::get('invoice_footer'))->toBe('Thank you for shopping')
+        ->and(Setting::where('key', 'tax_rate')->value('type'))->toBe('decimal');
+});
+
+test('saving rejects an empty company name and an out-of-range tax rate', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)->test('livewire.settings.index')
+        ->set('companyName', '')
+        ->set('taxRate', '150')
+        ->call('save')
+        ->assertHasErrors([
+            'companyName' => 'required',
+            'taxRate' => 'max',
+        ])
+        ->assertSet('saved', false);
 });
