@@ -53,7 +53,8 @@ new class extends Component {
                     <x-table.td class="text-slate-600">{{ $sequence->reset_period->label() }}</x-table.td>
                     <x-table.td class="text-slate-500">{{ $sequence->last_reset_at?->format('Y-m-d H:i') ?? '—' }}</x-table.td>
                     <x-table.td>
-                        {{-- edit component wired in Task 4 --}}
+                        <livewire:livewire.document-sequences.actions.edit :sequence="$sequence"
+                            wire:key="document-sequence-edit-{{ $sequence->id }}" />
                     </x-table.td>
                 </tr>
             @empty

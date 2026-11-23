@@ -45,3 +45,49 @@ test('the index lists sequences with their preview', function () {
         ->assertSee('EXP-000003')
         ->assertSee('Never');
 });
+
+test('a sequence can be updated', function () {
+    $sequence = DocumentSequence::factory()->forDocumentType('sale', 'SALE')->create([
+        'next_number' => 7,
+        'padding' => 6,
+        'reset_period' => ResetPeriod::MONTHLY,
+    ]);
+
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.document-sequences.actions.edit', ['sequence' => $sequence])
+        ->assertSet('prefix', 'SALE')
+        ->set('prefix', 'INV')
+        ->set('nextNumber', '20')
+        ->set('padding', '4')
+        ->set('resetPeriod', ResetPeriod::YEARLY->value)
+        ->call('update')
+        ->assertDispatched('document-sequence-updated')
+        ->assertHasNoErrors();
+
+    expect($sequence->refresh())
+        ->prefix->toBe('INV')
+        ->next_number->toBe(20)
+        ->padding->toBe(4)
+        ->reset_period->toBe(ResetPeriod::YEARLY);
+});
+
+test('editing a sequence validates prefix, padding and reset period', function () {
+    $sequence = DocumentSequence::factory()->forDocumentType('sale', 'SALE')->create();
+
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.document-sequences.actions.edit', ['sequence' => $sequence])
+        ->set('prefix', '')
+        ->set('padding', '11')
+        ->set('resetPeriod', 'hourly')
+        ->call('update')
+        ->assertHasErrors([
+            'prefix' => 'required',
+            'padding' => 'max',
+            'resetPeriod' => 'in',
+        ])
+        ->assertNotDispatched('document-sequence-updated');
+});
