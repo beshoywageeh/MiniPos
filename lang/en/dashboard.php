@@ -30,5 +30,6 @@ return [
     'nav_parties' => 'Parties',
     'nav_expenses' => 'Expenses',
     'nav_reports' => 'Reports',
+    'nav_settings' => 'Settings',
     'nav_units' => 'unit',
 ];

@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Setting;
+use App\Models\User;
 use App\Support\Settings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -45,4 +46,18 @@ test('all returns only the requested group with typed values', function () {
         'tax_rate' => '10.50',
     ])->and($all)->not->toHaveKey('unrelated')
         ->and($all)->toHaveCount(2);
+});
+
+test('settings route exists and requires auth', function () {
+    expect(route('settings.index'))->toBe(url('/settings'));
+
+    $this->get(route('settings.index'))->assertRedirect();
+});
+
+test('the sidebar links to the settings page', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee(route('settings.index'));
 });

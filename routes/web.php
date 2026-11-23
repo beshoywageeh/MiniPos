@@ -22,6 +22,7 @@ Route::group(['middleware' => ['auth']], function () {
         ->name('products.show');
     Route::livewire('/units', 'livewire.unit.index')->name('units.index');
     Route::livewire('/parties', 'livewire.party.index')->name('parties.index');
+    Route::livewire('/settings', 'livewire.settings.index')->name('settings.index');
 
     Route::livewire('/sales/create', 'livewire.sales.create')->name('sales.create');
     Route::get('/sales/invoice-preview', fn () => view('sales.invoice-preview'))->name('sales.invoice_preview');
