@@ -47,6 +47,17 @@ test('dashboard shows today sales, purchases and expenses totals', function () {
     $response->assertSee('999.99');
 });
 
+test('dashboard recent sales link to their invoice previews', function () {
+    $user = User::factory()->create();
+    $sale = Sale::factory()->create(['document_number' => 'SALE-LINK-1']);
+
+    $response = $this->actingAs($user)->get('/dashboard');
+
+    $response->assertOk();
+    $response->assertSee(route('sales.invoice_preview', $sale));
+    $response->assertSee('SALE-LINK-1');
+});
+
 test('dashboard lists products at or below their minimum stock level', function () {
     $user = User::factory()->create();
 

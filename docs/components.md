@@ -124,7 +124,7 @@ All attributes pass through — combine freely with Alpine and Livewire:
 ```blade
 <x-button>{{ __('general.save') }}</x-button>
 
-<x-button variant="secondary" :href="route('sales.invoice_preview')" wire:navigate>
+<x-button variant="secondary" :href="route('sales.invoice_preview', $sale)" wire:navigate>
     {{ __('sales.preview_invoice') }}
 </x-button>
 

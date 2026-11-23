@@ -255,9 +255,7 @@ new class extends Component {
             return $sale;
         });
 
-        session()->flash('sale-created', __('sales.created').': '.$sale->document_number);
-
-        $this->redirectRoute('sales.create', navigate: true);
+        $this->redirectRoute('sales.invoice_preview', ['sale' => $sale], navigate: true);
     }
 
     /**
@@ -349,18 +347,9 @@ new class extends Component {
 ?>
 
 <div class="mx-auto max-w-7xl space-y-6">
-    @if (session('sale-created'))
-        <div class="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-medium text-emerald-700">
-            {{ session('sale-created') }}
-        </div>
-    @endif
-
     <form wire:submit="save">
         <x-page-header :title="__('sales.title')" :subtitle="__('sales.subtitle')">
             <x-slot:actions>
-                <x-button variant="secondary" :href="route('sales.invoice_preview')" wire:navigate>
-                    {{ __('sales.preview_invoice') }}
-                </x-button>
                 <x-button type="submit" wire:loading.attr="disabled">
                     {{ __('sales.save') }}
                 </x-button>

@@ -2,6 +2,7 @@
 
 use App\Enums\MovementType;
 use App\Http\Controllers\ProductLookupController;
+use App\Http\Controllers\SaleInvoicePreviewController;
 use App\Models\Cashbox;
 use App\Models\Expense;
 use App\Models\Product;
@@ -26,7 +27,9 @@ Route::group(['middleware' => ['auth']], function () {
     Route::livewire('/document-sequences', 'livewire.document-sequences.index')->name('document-sequences.index');
 
     Route::livewire('/sales/create', 'livewire.sales.create')->name('sales.create');
-    Route::get('/sales/invoice-preview', fn () => view('sales.invoice-preview'))->name('sales.invoice_preview');
+    Route::get('/sales/{sale}/invoice-preview', SaleInvoicePreviewController::class)
+        ->whereNumber('sale')
+        ->name('sales.invoice_preview');
 
     Route::view('/reports', 'reports.index')->name('reports.index');
 

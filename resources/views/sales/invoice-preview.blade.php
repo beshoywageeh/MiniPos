@@ -1,37 +1,4 @@
 <x-print-layout :title="__('sales.print_preview')">
-    @php
-        $sample = [
-            'number' => 'INV-000001',
-            'invoice_date' => now()->format('Y-m-d'),
-            'due_date' => now()->addDays(14)->format('Y-m-d'),
-            'status' => 'PARTIAL',
-            'store' => [
-                'name' => config('app.name', 'MiniPOS'),
-                'address' => '12 Main Street, Downtown',
-                'phone' => '+1 (555) 123-4567',
-            ],
-            'customer' => [
-                'name' => 'John Smith',
-                'phone' => '+1 (555) 987-6543',
-                'address' => '88 Elm Road, Riverside',
-            ],
-            'cashier' => 'Alex Doe',
-            'items' => [
-                ['name' => 'Espresso Coffee 250g', 'sku' => 'SKU-00123', 'qty' => 2, 'price' => 8.50, 'discount' => 0, 'tax' => 10],
-                ['name' => 'Green Tea 100g', 'sku' => 'SKU-00456', 'qty' => 1, 'price' => 5.20, 'discount' => 1.00, 'tax' => 10],
-                ['name' => 'Ceramic Mug', 'sku' => 'SKU-00789', 'qty' => 3, 'price' => 4.00, 'discount' => 0, 'tax' => 0],
-            ],
-            'paid' => 10.00,
-            'payment_method' => 'Cash',
-            'notes' => 'Thank you for your business.',
-        ];
-        $sampleSubtotal = collect($sample['items'])->sum(fn ($item) => $item['qty'] * $item['price']);
-        $sampleDiscount = collect($sample['items'])->sum('discount');
-        $sampleTax = collect($sample['items'])->sum(fn ($item) => ($item['qty'] * $item['price'] - $item['discount']) * $item['tax'] / 100);
-        $sampleTotal = $sampleSubtotal - $sampleDiscount + $sampleTax;
-        $sampleDue = $sampleTotal - $sample['paid'];
-    @endphp
-
     <div
         x-data="{
             size: 'a4',
@@ -84,15 +51,15 @@
             <div x-show="size === 'a4'" class="print-sheet mx-auto max-w-[210mm] bg-white p-10 shadow-lg">
                 <div class="flex flex-wrap items-start justify-between gap-6">
                     <div>
-                        <h1 class="text-2xl font-bold text-slate-900">{{ $sample['store']['name'] }}</h1>
-                        <p class="mt-1 text-sm text-slate-500">{{ $sample['store']['address'] }}</p>
-                        <p class="text-sm text-slate-500">{{ $sample['store']['phone'] }}</p>
+                        <h1 class="text-2xl font-bold text-slate-900">{{ $store['name'] }}</h1>
+                        <p class="mt-1 text-sm text-slate-500">{{ $store['address'] ?: '—' }}</p>
+                        <p class="text-sm text-slate-500">{{ $store['phone'] ?: '—' }}</p>
                     </div>
                     <div class="text-right">
                         <h2 class="text-2xl font-bold tracking-wide text-indigo-600 uppercase">{{ __('sales.invoice') }}</h2>
-                        <p class="mt-1 text-sm font-semibold text-slate-900">{{ $sample['number'] }}</p>
+                        <p class="mt-1 text-sm font-semibold text-slate-900">{{ $sale->document_number }}</p>
                         <x-badge color="amber" class="mt-2">
-                            {{ __('DocumentStatus.'.$sample['status']) }}
+                            {{ $sale->status->label() }}
                         </x-badge>
                     </div>
                 </div>
@@ -100,15 +67,15 @@
                 <div class="mt-8 grid grid-cols-1 gap-6 sm:grid-cols-2">
                     <div>
                         <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('sales.bill_to') }}</h3>
-                        <p class="mt-2 text-sm font-semibold text-slate-900">{{ $sample['customer']['name'] }}</p>
-                        <p class="text-sm text-slate-500">{{ $sample['customer']['phone'] }}</p>
-                        <p class="text-sm text-slate-500">{{ $sample['customer']['address'] }}</p>
+                        <p class="mt-2 text-sm font-semibold text-slate-900">{{ $sale->party?->name ?? __('sales.no_customer') }}</p>
+                        <p class="text-sm text-slate-500">{{ $sale->party?->phone ?: '—' }}</p>
+                        <p class="text-sm text-slate-500">{{ $sale->party?->address ?: '—' }}</p>
                     </div>
                     <div class="sm:text-right">
                         <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('sales.details') }}</h3>
-                        <p class="mt-2 text-sm text-slate-500">{{ __('dashboard.recent_sales') }}: <span class="font-medium text-slate-900">{{ $sample['invoice_date'] }}</span></p>
-                        <p class="text-sm text-slate-500">{{ __('sales.due_date') }}: <span class="font-medium text-slate-900">{{ $sample['due_date'] }}</span></p>
-                        <p class="text-sm text-slate-500">{{ __('sales.cashier') }}: <span class="font-medium text-slate-900">{{ $sample['cashier'] }}</span></p>
+                        <p class="mt-2 text-sm text-slate-500">{{ __('sales.invoice_date') }}: <span class="font-medium text-slate-900">{{ $sale->invoice_date->format('Y-m-d') }}</span></p>
+                        <p class="text-sm text-slate-500">{{ __('sales.due_date') }}: <span class="font-medium text-slate-900">{{ $sale->due_date?->format('Y-m-d') ?? '—' }}</span></p>
+                        <p class="text-sm text-slate-500">{{ __('sales.cashier') }}: <span class="font-medium text-slate-900">{{ $sale->creator?->name ?? '—' }}</span></p>
                     </div>
                 </div>
 
@@ -125,19 +92,18 @@
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
-                        @foreach ($sample['items'] as $index => $item)
-                            @php $lineBase = $item['qty'] * $item['price'] - $item['discount']; @endphp
+                        @foreach ($sale->items as $index => $item)
                             <tr>
                                 <td class="px-4 py-3 text-slate-500">{{ $index + 1 }}</td>
                                 <td class="px-4 py-3">
-                                    <p class="font-medium text-slate-900">{{ $item['name'] }}</p>
-                                    <p class="text-xs text-slate-400">{{ $item['sku'] }}</p>
+                                    <p class="font-medium text-slate-900">{{ $item->product_name }}</p>
+                                    <p class="text-xs text-slate-400">{{ $item->sku }}</p>
                                 </td>
-                                <td class="px-4 py-3 text-right text-slate-600">{{ rtrim(rtrim(number_format($item['qty'], 2), '0'), '.') ?: '0' }}</td>
-                                <td class="px-4 py-3 text-right text-slate-600">{{ number_format($item['price'], 2) }}</td>
-                                <td class="px-4 py-3 text-right text-slate-600">{{ number_format($item['discount'], 2) }}</td>
-                                <td class="px-4 py-3 text-right text-slate-600">{{ number_format(($item['qty'] * $item['price'] - $item['discount']) * $item['tax'] / 100, 2) }} ({{ rtrim(rtrim(number_format($item['tax'], 2), '0'), '.') ?: '0' }}%)</td>
-                                <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ number_format($lineBase + $lineBase * $item['tax'] / 100, 2) }}</td>
+                                <td class="px-4 py-3 text-right text-slate-600">{{ rtrim(rtrim(number_format($item->quantity, 2), '0'), '.') ?: '0' }}</td>
+                                <td class="px-4 py-3 text-right text-slate-600">{{ number_format($item->unit_price, 2) }}</td>
+                                <td class="px-4 py-3 text-right text-slate-600">{{ number_format($item->discount_amount, 2) }}</td>
+                                <td class="px-4 py-3 text-right text-slate-600">{{ number_format($item->tax_amount, 2) }}</td>
+                                <td class="px-4 py-3 text-right font-semibold text-slate-900">{{ number_format($item->line_total, 2) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -146,69 +112,65 @@
                 <div class="mt-8 flex flex-wrap items-start justify-between gap-6">
                     <div class="min-w-[200px] flex-1">
                         <h3 class="text-xs font-semibold uppercase tracking-wider text-slate-400">{{ __('sales.notes') }}</h3>
-                        <p class="mt-2 text-sm text-slate-500">{{ $sample['notes'] }}</p>
+                        <p class="mt-2 text-sm text-slate-500">{{ $sale->notes ?: '—' }}</p>
                         <p class="mt-10 border-t border-slate-200 pt-2 text-xs text-slate-400">{{ __('sales.received_by') }}</p>
                     </div>
                     <div class="w-full max-w-xs space-y-2 text-sm">
-                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.subtotal') }}</span><span class="font-medium text-slate-900">{{ number_format($sampleSubtotal, 2) }}</span></div>
-                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.discount') }}</span><span class="font-medium text-slate-900">-{{ number_format($sampleDiscount, 2) }}</span></div>
-                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.tax') }}</span><span class="font-medium text-slate-900">{{ number_format($sampleTax, 2) }}</span></div>
-                        <div class="flex justify-between border-t border-slate-200 pt-2 text-base"><span class="font-semibold text-slate-900">{{ __('sales.grand_total') }}</span><span class="font-bold text-slate-900">{{ number_format($sampleTotal, 2) }}</span></div>
-                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.paid_amount') }} ({{ $sample['payment_method'] }})</span><span class="font-medium text-emerald-600">{{ number_format($sample['paid'], 2) }}</span></div>
-                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.due_amount') }}</span><span class="font-semibold text-rose-600">{{ number_format($sampleDue, 2) }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.subtotal') }}</span><span class="font-medium text-slate-900">{{ number_format($sale->subtotal, 2) }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.discount') }}</span><span class="font-medium text-slate-900">-{{ number_format($sale->discount_amount, 2) }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.tax') }}</span><span class="font-medium text-slate-900">{{ number_format($sale->tax_amount, 2) }}</span></div>
+                        <div class="flex justify-between border-t border-slate-200 pt-2 text-base"><span class="font-semibold text-slate-900">{{ __('sales.grand_total') }}</span><span class="font-bold text-slate-900">{{ number_format($sale->total_amount, 2) }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.paid_amount') }}@if ($paymentMethod) ({{ $paymentMethod->label() }})@endif</span><span class="font-medium text-emerald-600">{{ number_format($sale->paid_amount, 2) }}</span></div>
+                        <div class="flex justify-between"><span class="text-slate-500">{{ __('sales.due_amount') }}</span><span class="font-semibold text-rose-600">{{ number_format($sale->remaining_amount, 2) }}</span></div>
                     </div>
                 </div>
 
                 <p class="mt-10 border-t border-slate-200 pt-4 text-center text-xs text-slate-400">
-                    {{ __('sales.thank_you') }}
+                    {{ $invoiceFooter }}
                 </p>
             </div>
 
             {{-- 80mm thermal receipt --}}
             <div x-show="size === 'thermal'" x-cloak class="print-sheet mx-auto w-[80mm] bg-white p-4 font-mono text-[11px] leading-relaxed text-slate-900 shadow-lg">
                 <div class="text-center">
-                    <h2 class="text-sm font-bold uppercase">{{ $sample['store']['name'] }}</h2>
-                    <p>{{ $sample['store']['address'] }}</p>
-                    <p>{{ $sample['store']['phone'] }}</p>
+                    <h2 class="text-sm font-bold uppercase">{{ $store['name'] }}</h2>
+                    <p>{{ $store['address'] ?: '—' }}</p>
+                    <p>{{ $store['phone'] ?: '—' }}</p>
                 </div>
 
                 <p class="my-2 border-t border-dashed border-slate-400"></p>
 
-                <p>{{ __('sales.invoice_number') }}: {{ $sample['number'] }}</p>
-                <p>{{ __('dashboard.recent_sales') }}: {{ $sample['invoice_date'] }}</p>
-                <p>{{ __('sales.cashier') }}: {{ $sample['cashier'] }}</p>
-                <p>{{ __('sales.bill_to') }}: {{ $sample['customer']['name'] }}</p>
+                <p>{{ __('sales.invoice_number') }}: {{ $sale->document_number }}</p>
+                <p>{{ __('sales.invoice_date') }}: {{ $sale->invoice_date->format('Y-m-d') }}</p>
+                <p>{{ __('sales.cashier') }}: {{ $sale->creator?->name ?? '—' }}</p>
+                <p>{{ __('sales.bill_to') }}: {{ $sale->party?->name ?? __('sales.no_customer') }}</p>
 
                 <p class="my-2 border-t border-dashed border-slate-400"></p>
 
-                @foreach ($sample['items'] as $item)
-                    @php
-                        $lineBase = $item['qty'] * $item['price'] - $item['discount'];
-                        $lineTotal = $lineBase + $lineBase * $item['tax'] / 100;
-                    @endphp
-                    <p class="font-semibold">{{ $item['name'] }}</p>
+                @foreach ($sale->items as $item)
+                    <p class="font-semibold">{{ $item->product_name }}</p>
                     <div class="flex justify-between">
-                        <span>{{ rtrim(rtrim(number_format($item['qty'], 2), '0'), '.') ?: '0' }} x {{ number_format($item['price'], 2) }}</span>
-                        <span>{{ number_format($lineTotal, 2) }}</span>
+                        <span>{{ rtrim(rtrim(number_format($item->quantity, 2), '0'), '.') ?: '0' }} x {{ number_format($item->unit_price, 2) }}</span>
+                        <span>{{ number_format($item->line_total, 2) }}</span>
                     </div>
-                    @if ($item['discount'] > 0)
-                        <div class="flex justify-between text-slate-500"><span>{{ __('sales.discount') }}</span><span>-{{ number_format($item['discount'], 2) }}</span></div>
+                    @if ($item->discount_amount > 0)
+                        <div class="flex justify-between text-slate-500"><span>{{ __('sales.discount') }}</span><span>-{{ number_format($item->discount_amount, 2) }}</span></div>
                     @endif
                 @endforeach
 
                 <p class="my-2 border-t border-dashed border-slate-400"></p>
 
-                <div class="flex justify-between"><span>{{ __('sales.subtotal') }}</span><span>{{ number_format($sampleSubtotal, 2) }}</span></div>
-                <div class="flex justify-between"><span>{{ __('sales.discount') }}</span><span>-{{ number_format($sampleDiscount, 2) }}</span></div>
-                <div class="flex justify-between"><span>{{ __('sales.tax') }}</span><span>{{ number_format($sampleTax, 2) }}</span></div>
-                <div class="flex justify-between text-sm font-bold"><span>{{ __('sales.grand_total') }}</span><span>{{ number_format($sampleTotal, 2) }}</span></div>
-                <div class="flex justify-between"><span>{{ __('sales.paid_amount') }} ({{ $sample['payment_method'] }})</span><span>{{ number_format($sample['paid'], 2) }}</span></div>
-                <div class="flex justify-between"><span>{{ __('sales.due_amount') }}</span><span>{{ number_format($sampleDue, 2) }}</span></div>
+                <div class="flex justify-between"><span>{{ __('sales.subtotal') }}</span><span>{{ number_format($sale->subtotal, 2) }}</span></div>
+                <div class="flex justify-between"><span>{{ __('sales.discount') }}</span><span>-{{ number_format($sale->discount_amount, 2) }}</span></div>
+                <div class="flex justify-between"><span>{{ __('sales.tax') }}</span><span>{{ number_format($sale->tax_amount, 2) }}</span></div>
+                <div class="flex justify-between text-sm font-bold"><span>{{ __('sales.grand_total') }}</span><span>{{ number_format($sale->total_amount, 2) }}</span></div>
+                <div class="flex justify-between"><span>{{ __('sales.paid_amount') }}@if ($paymentMethod) ({{ $paymentMethod->label() }})@endif</span><span>{{ number_format($sale->paid_amount, 2) }}</span></div>
+                <div class="flex justify-between"><span>{{ __('sales.due_amount') }}</span><span>{{ number_format($sale->remaining_amount, 2) }}</span></div>
 
                 <p class="my-2 border-t border-dashed border-slate-400"></p>
 
-                <p class="text-center">{{ $sample['notes'] }}</p>
-                <p class="mt-1 text-center">{{ __('sales.thank_you') }}</p>
+                <p class="text-center">{{ $sale->notes ?: '—' }}</p>
+                <p class="mt-1 text-center">{{ $invoiceFooter }}</p>
             </div>
         </div>
     </div>

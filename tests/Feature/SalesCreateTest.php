@@ -282,3 +282,15 @@ test('a walk-in customer sale is saved without a party', function () {
 
     expect(Sale::query()->sole()->party_id)->toBeNull();
 });
+
+test('saving a sale redirects to that sale invoice preview', function () {
+    Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->set('warehouseId', $this->warehouse->id)
+        ->set('cashboxId', $this->cashbox->id)
+        ->set('paidAmount', '22.00')
+        ->set('items', [saleItem($this->product->id, quantity: '2', taxRate: '10')])
+        ->call('save')
+        ->assertHasNoErrors()
+        ->assertRedirect(route('sales.invoice_preview', Sale::query()->sole()));
+});

@@ -54,7 +54,11 @@
                                 ];
                             @endphp
                             <tr class="transition hover:bg-slate-50">
-                                <x-table.td class="px-5 font-medium text-slate-900">{{ $sale->document_number }}</x-table.td>
+                                <x-table.td class="px-5 font-medium text-slate-900">
+                                    <a href="{{ route('sales.invoice_preview', $sale) }}" class="text-indigo-600 hover:text-indigo-800 hover:underline">
+                                        {{ $sale->document_number }}
+                                    </a>
+                                </x-table.td>
                                 <x-table.td class="px-5 text-slate-500">{{ $sale->invoice_date->format('Y-m-d') }}</x-table.td>
                                 <x-table.td align="right" class="px-5 font-semibold text-slate-900">{{ number_format($sale->total_amount, 2) }}</x-table.td>
                                 <x-table.td class="px-5">
