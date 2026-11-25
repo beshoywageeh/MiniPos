@@ -247,26 +247,119 @@ test('the due date cannot precede the invoice date', function () {
         ->assertHasErrors(['dueDate' => 'after_or_equal']);
 });
 
-test('the product search finds active products and picking fills the row', function () {
+test('the product search finds active products by name', function () {
     Product::query()->whereKey($this->product->id)->update(['name' => 'Espresso Beans']);
-    $inactive = Product::factory()->create(['name' => 'Hidden Item', 'is_active' => false]);
+    Product::factory()->create(['name' => 'Hidden Item', 'is_active' => false]);
 
     $component = Livewire::actingAs($this->user)
         ->test('livewire.sales.create')
-        ->set('searchingItemIndex', 0)
         ->set('searchTerm', 'Espresso');
 
     expect($component->get('searchResults'))->toHaveCount(1)
         ->and($component->get('searchResults.0.name'))->toBe('Espresso Beans');
+});
 
-    $component->call('pickProduct', 0, $this->product->id);
+test('pressing enter adds the first search result with quantity one and the database price', function () {
+    $this->product->update(['name' => 'Espresso Beans', 'selling_price' => '12.50']);
 
-    expect($component->get('items.0.product_id'))->toBe($this->product->id)
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->call('addFirstSearchResult', 'Espresso');
+
+    expect($component->get('items'))->toHaveCount(1)
+        ->and($component->get('items.0.product_id'))->toBe($this->product->id)
         ->and($component->get('items.0.product_name'))->toBe('Espresso Beans')
-        ->and((float) $component->get('items.0.unit_price'))->toBe(10.0)
-        ->and($component->get('searchResults'))->toBe([])
-        ->and($component->get('searchingItemIndex'))->toBeNull()
-        ->and(Product::find($inactive->id)->name)->toBe('Hidden Item');
+        ->and($component->get('items.0.quantity'))->toBe('1')
+        ->and((float) $component->get('items.0.unit_price'))->toBe(12.5)
+        ->and($component->get('searchTerm'))->toBe('')
+        ->and($component->get('searchResults'))->toBe([]);
+});
+
+test('clicking a search result adds that product to the invoice', function () {
+    $second = Product::factory()->create(['name' => 'Paper Filters', 'selling_price' => '3.75']);
+
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->set('searchTerm', 'Paper')
+        ->call('addProductFromSearch', $second->id);
+
+    expect($component->get('items'))->toHaveCount(1)
+        ->and($component->get('items.0.product_id'))->toBe($second->id)
+        ->and((float) $component->get('items.0.unit_price'))->toBe(3.75)
+        ->and($component->get('searchTerm'))->toBe('');
+});
+
+test('adding the same product again increases its quantity without changing its price', function () {
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->call('addProductFromSearch', $this->product->id)
+        ->set('items.0.unit_price', '25.00')
+        ->set('items.0.discount_amount', '1.50')
+        ->set('items.0.tax_rate', '5')
+        ->call('addProductFromSearch', $this->product->id);
+
+    expect($component->get('items'))->toHaveCount(1)
+        ->and($component->get('items.0.quantity'))->toBe('2')
+        ->and((float) $component->get('items.0.unit_price'))->toBe(25.0)
+        ->and((float) $component->get('items.0.discount_amount'))->toBe(1.5)
+        ->and((float) $component->get('items.0.tax_rate'))->toBe(5.0);
+});
+
+test('re-adding a product keeps the incremented quantity at three decimal places', function () {
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->call('addProductFromSearch', $this->product->id)
+        ->set('items.0.quantity', '1.2345')
+        ->call('addProductFromSearch', $this->product->id);
+
+    expect($component->get('items'))->toHaveCount(1)
+        ->and($component->get('items.0.quantity'))->toBe('2.234');
+});
+
+test('adding a different product creates a second invoice line', function () {
+    $second = Product::factory()->create(['selling_price' => '3.75']);
+
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->call('addProductFromSearch', $this->product->id)
+        ->call('addProductFromSearch', $second->id);
+
+    expect($component->get('items'))->toHaveCount(2)
+        ->and($component->get('items.1.product_id'))->toBe($second->id)
+        ->and($component->get('items.1.quantity'))->toBe('1')
+        ->and((float) $component->get('items.1.unit_price'))->toBe(3.75);
+});
+
+test('a product that is not active cannot be added from search', function () {
+    $inactive = Product::factory()->create(['is_active' => false]);
+
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->set('searchTerm', 'Hidden')
+        ->call('addProductFromSearch', $inactive->id);
+
+    expect($component->get('items'))->toHaveCount(1)
+        ->and($component->get('items.0.product_id'))->toBeNull()
+        ->and($component->get('searchTerm'))->toBe('')
+        ->and($component->get('searchResults'))->toBe([]);
+});
+
+test('search results can be selected with the keyboard', function () {
+    $this->product->update(['name' => 'Espresso Beans']);
+
+    Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->set('searchTerm', 'Espresso')
+        ->assertSeeHtml(sprintf('wire:click.prevent="addProductFromSearch(%d)"', $this->product->id), false);
+});
+
+test('pressing enter with no matching product leaves the invoice unchanged', function () {
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->call('addFirstSearchResult', 'no such product');
+
+    expect($component->get('items'))->toHaveCount(1)
+        ->and($component->get('items.0.product_id'))->toBeNull();
 });
 
 test('a walk-in customer sale is saved without a party', function () {

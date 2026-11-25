@@ -44,8 +44,6 @@ new class extends Component {
 
     public string $searchTerm = '';
 
-    public ?int $searchingItemIndex = null;
-
     /** @var list<array<string, mixed>> */
     public array $searchResults = [];
 
@@ -88,20 +86,54 @@ new class extends Component {
             ->all();
     }
 
-    public function pickProduct(int $index, int $productId): void
+    public function addFirstSearchResult(string $term): void
     {
-        $result = collect($this->searchResults)->firstWhere('id', $productId);
+        $this->searchTerm = $term;
+        $this->updatedSearchTerm();
 
-        if ($result === null) {
+        if ($this->searchResults === []) {
             return;
         }
 
-        $this->items[$index]['product_id'] = $result['id'];
-        $this->items[$index]['product_name'] = $result['name'];
-        $this->items[$index]['unit_price'] = (string) $result['selling_price'];
+        $this->addProductFromSearch((int) $this->searchResults[0]['id']);
+    }
+
+    public function addProductFromSearch(int $productId): void
+    {
+        $product = Product::query()
+            ->whereKey($productId)
+            ->where('is_active', true)
+            ->first();
+
+        if ($product === null) {
+            $this->searchTerm = '';
+            $this->searchResults = [];
+
+            return;
+        }
+
+        $existingIndex = collect($this->items)->search(
+            fn (array $item): bool => isset($item['product_id']) && (int) $item['product_id'] === $product->id
+        );
+
+        if ($existingIndex !== false) {
+            $this->items[$existingIndex]['quantity'] = rtrim(rtrim(bcadd((string) $this->items[$existingIndex]['quantity'], '1', 3), '0'), '.');
+        } else {
+            $blankIndex = collect($this->items)->search(fn (array $item): bool => $item['product_id'] === null);
+
+            if ($blankIndex === false) {
+                $this->addItem();
+                $blankIndex = count($this->items) - 1;
+            }
+
+            $this->items[$blankIndex]['product_id'] = $product->id;
+            $this->items[$blankIndex]['product_name'] = $product->name;
+            $this->items[$blankIndex]['quantity'] = '1';
+            $this->items[$blankIndex]['unit_price'] = (string) $product->selling_price;
+        }
+
         $this->searchTerm = '';
         $this->searchResults = [];
-        $this->searchingItemIndex = null;
     }
 
     /**
@@ -388,6 +420,30 @@ new class extends Component {
                 </button>
             @endslot
 
+            <div class="px-5 pb-3 pt-4">
+                <div class="relative">
+                    <x-form.input type="text" name="searchTerm" wire:model.live.debounce.400ms="searchTerm"
+                        wire:keydown.enter.prevent="addFirstSearchResult($event.target.value)" autocomplete="off"
+                        placeholder="{{ __('sales.search_product') }}" :label="__('sales.product')" />
+                    @if (count($this->searchResults) > 0)
+                        <div class="absolute inset-x-0 z-10 mt-1 max-h-60 overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
+                            @foreach ($this->searchResults as $result)
+                                <button type="button" wire:click.prevent="addProductFromSearch({{ $result['id'] }})"
+                                    class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-indigo-50"
+                                    wire:key="search-result-{{ $result['id'] }}"
+                                >
+                                    <span class="min-w-0">
+                                        <span class="block truncate font-medium text-slate-900">{{ $result['name'] }}</span>
+                                        <span class="block truncate text-xs text-slate-500">{{ $result['code'] }}{{ $result['sku'] ? ' · '.$result['sku'] : '' }}</span>
+                                    </span>
+                                    <span class="shrink-0 text-xs font-semibold text-slate-700">{{ number_format($result['selling_price'], 2) }}</span>
+                                </button>
+                            @endforeach
+                        </div>
+                    @endif
+                </div>
+            </div>
+
             <div class="hidden px-5 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 lg:grid lg:grid-cols-12 lg:gap-3">
                 <span class="col-span-4">{{ __('sales.product') }}</span>
                 <span class="col-span-1">{{ __('sales.qty') }}</span>
@@ -403,47 +459,21 @@ new class extends Component {
                     <div class="grid grid-cols-2 items-end gap-3 rounded-lg border border-slate-100 p-3 sm:grid-cols-6 lg:grid-cols-12 lg:border-0 lg:p-0"
                         wire:key="sale-item-{{ $index }}">
                         <div class="col-span-2 sm:col-span-6 lg:col-span-4">
-                            <label class="block text-xs font-medium text-slate-500 lg:hidden"
-                                for="product-{{ $index }}">{{ __('sales.product') }}</label>
-                            <div class="relative">
-                                @if ($item['product_id'])
-                                    <div class="mb-1 flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-1.5 text-xs font-medium text-indigo-700">
-                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
-                                            stroke="currentColor" class="h-4 w-4 shrink-0">
-                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                d="m4.5 12.75 6 6 9-13.5" />
-                                        </svg>
-                                        <span class="truncate">{{ $item['product_name'] }}</span>
-                                    </div>
-                                @endif
-                                <input
-                                    type="text"
-                                    id="product-{{ $index }}"
-                                    wire:model.live.debounce.400ms="searchTerm"
-                                    wire:focus="$wire.set('searchingItemIndex', {{ $index }})"
-                                    autocomplete="off"
-                                    placeholder="{{ __('sales.search_product') }}"
-                                    class="block w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 shadow-sm placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/30"
-                                />
-                                @if ($this->searchingItemIndex === $index && count($this->searchResults) > 0)
-                                    <div class="absolute z-10 mt-1 max-h-60 w-full overflow-y-auto rounded-lg border border-slate-200 bg-white py-1 shadow-lg">
-                                        @foreach ($this->searchResults as $result)
-                                            <button
-                                                type="button"
-                                                wire:mousedown.prevent="pickProduct({{ $index }}, {{ $result['id'] }})"
-                                                class="flex w-full items-center justify-between gap-3 px-3 py-2 text-left text-sm transition hover:bg-indigo-50"
-                                                wire:key="search-result-{{ $result['id'] }}"
-                                            >
-                                                <span class="min-w-0">
-                                                    <span class="block truncate font-medium text-slate-900">{{ $result['name'] }}</span>
-                                                    <span class="block truncate text-xs text-slate-500">{{ $result['code'] }}{{ $result['sku'] ? ' · '.$result['sku'] : '' }}</span>
-                                                </span>
-                                                <span class="shrink-0 text-xs font-semibold text-slate-700">{{ number_format($result['selling_price'], 2) }}</span>
-                                            </button>
-                                        @endforeach
-                                    </div>
-                                @endif
-                            </div>
+                            <span class="block text-xs font-medium text-slate-500 lg:hidden">{{ __('sales.product') }}</span>
+                            @if ($item['product_id'])
+                                <div class="mt-1 flex items-center gap-2 rounded-lg bg-indigo-50 px-3 py-2 text-sm font-medium text-indigo-700">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5"
+                                        stroke="currentColor" class="h-4 w-4 shrink-0">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="m4.5 12.75 6 6 9-13.5" />
+                                    </svg>
+                                    <span class="truncate">{{ $item['product_name'] }}</span>
+                                </div>
+                            @else
+                                <div class="mt-1 rounded-lg border border-dashed border-slate-300 px-3 py-2 text-sm text-slate-400">
+                                    {{ __('sales.search_product') }}
+                                </div>
+                            @endif
                         </div>
                         <div>
                             <x-form.input type="number" min="0" step="0.001" name="items.{{ $index }}.quantity"
