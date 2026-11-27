@@ -28,6 +28,14 @@ beforeEach(function () {
         'purchase_price' => '6.00',
     ]);
 
+    StockMovement::factory()->create([
+        'product_id' => $this->product->id,
+        'warehouse_id' => $this->warehouse->id,
+        'movement_type' => MovementType::IN->value,
+        'quantity' => 100,
+        'movement_date' => today(),
+    ]);
+
     DocumentSequence::factory()->forDocumentType('sale', 'SALE')->create([
         'next_number' => 1,
         'padding' => 6,
@@ -96,7 +104,9 @@ test('a paid sale writes out movements and a receipt payment', function () {
         ->assertHasNoErrors();
 
     $sale = Sale::query()->sole();
-    $movement = StockMovement::query()->sole();
+    $movement = StockMovement::query()
+        ->where('movement_type', MovementType::OUT->value)
+        ->sole();
     $payment = Payment::query()->sole();
 
     expect($movement->movement_type)->toBe(MovementType::OUT->value)
@@ -143,7 +153,7 @@ test('an unpaid sale is marked pending with no payment', function () {
 
     expect(Sale::query()->sole()->status)->toBe(DocumentStatus::PENDING)
         ->and(Payment::query()->count())->toBe(0)
-        ->and(StockMovement::query()->count())->toBe(1);
+        ->and(StockMovement::query()->where('movement_type', MovementType::OUT->value)->count())->toBe(1);
 });
 
 test('a draft sale gets no movements and no payment', function () {
@@ -160,7 +170,7 @@ test('a draft sale gets no movements and no payment', function () {
 
     expect($sale->status)->toBe(DocumentStatus::DRAFT)
         ->and((float) $sale->paid_amount)->toBe(0.0)
-        ->and(StockMovement::query()->count())->toBe(0)
+        ->and(StockMovement::query()->where('movement_type', MovementType::OUT->value)->count())->toBe(0)
         ->and(Payment::query()->count())->toBe(0);
 });
 
@@ -181,9 +191,51 @@ test('consecutive sales get consecutive document numbers', function () {
         ->toBe(['SALE-000001', 'SALE-000002']);
 });
 
+test('the sale form preselects the only active warehouse', function () {
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->assertSet('warehouseId', $this->warehouse->id);
+
+    expect($component->html())->toMatch('/<option value="'.$this->warehouse->id.'" selected>/');
+});
+
+test('the sale form preselects the only active cashbox', function () {
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->assertSet('cashboxId', $this->cashbox->id);
+
+    expect($component->html())->toMatch('/<option value="'.$this->cashbox->id.'" selected>/');
+});
+
+test('the sale form asks for a choice when several warehouses or cashboxes are active', function () {
+    Warehouse::factory()->create(['name' => 'Second Warehouse']);
+    Cashbox::factory()->create(['name' => 'Second Cashbox']);
+
+    $component = Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->assertSet('warehouseId', '')
+        ->assertSet('cashboxId', '');
+
+    expect($component->html())
+        ->toContain(__('sales.select_warehouse'))
+        ->toMatch('/<option value="" selected>/')
+        ->toContain(__('sales.select_cashbox'));
+});
+
+test('a sale saves without touching the warehouse field when only one is active', function () {
+    Livewire::actingAs($this->user)
+        ->test('livewire.sales.create')
+        ->set('items', [saleItem($this->product->id)])
+        ->call('save')
+        ->assertHasNoErrors();
+
+    expect(Sale::query()->sole()->warehouse_id)->toBe($this->warehouse->id);
+});
+
 test('saving requires a warehouse, items with products and quantities', function () {
     Livewire::actingAs($this->user)
         ->test('livewire.sales.create')
+        ->set('warehouseId', '')
         ->set('items', [])
         ->call('save')
         ->assertHasErrors([

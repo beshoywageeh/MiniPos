@@ -33,4 +33,5 @@ return [
     'nav_settings' => 'Settings',
     'nav_document_sequences' => 'Document Sequences',
     'nav_units' => 'unit',
+    'nav_warehouses' => 'Warehouses',
 ];

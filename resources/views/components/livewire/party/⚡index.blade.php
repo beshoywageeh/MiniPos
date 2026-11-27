@@ -73,7 +73,9 @@ new class extends Component {
                 <tr class="transition hover:bg-slate-50" wire:key="party-{{ $party->id }}">
                     <x-table.td class="text-slate-500">{{ $loop->index + 1 }}</x-table.td>
                     <x-table.td class="text-slate-500">{{ $party->code }}</x-table.td>
-                    <x-table.td class="font-medium text-slate-900">{{ $party->name }}</x-table.td>
+                    <x-table.td class="font-medium text-slate-900">
+                        <a href="{{ route('parties.show', $party) }}" class="hover:text-indigo-600">{{ $party->name }}</a>
+                    </x-table.td>
                     <x-table.td class="text-slate-600">{{ $party->phone }}</x-table.td>
                     <x-table.td class="text-slate-600">{{ $party->address ?: '—' }}</x-table.td>
                     <x-table.td class="text-slate-600">{{ $party->type->label() }}</x-table.td>

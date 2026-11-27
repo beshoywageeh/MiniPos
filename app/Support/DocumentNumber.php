@@ -4,6 +4,12 @@ namespace App\Support;
 
 use App\Enums\ResetPeriod;
 use App\Models\DocumentSequence;
+use App\Models\Expense;
+use App\Models\Payment;
+use App\Models\Purchase;
+use App\Models\PurchaseReturn;
+use App\Models\Sale;
+use App\Models\SalesReturn;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -33,6 +39,11 @@ class DocumentNumber
 
             $number = self::preview($sequence);
 
+            while (self::isNumberTaken($documentType, $number)) {
+                $sequence->next_number++;
+                $number = self::preview($sequence);
+            }
+
             $sequence->next_number++;
             $sequence->save();
 
@@ -49,14 +60,25 @@ class DocumentNumber
         );
     }
 
+    private static function isNumberTaken(string $documentType, string $number): bool
+    {
+        $modelClass = match ($documentType) {
+            'sale' => Sale::class,
+            'purchase' => Purchase::class,
+            'payment' => Payment::class,
+            'expense' => Expense::class,
+            'sales_return' => SalesReturn::class,
+            'purchase_return' => PurchaseReturn::class,
+            default => null,
+        };
+
+        return $modelClass !== null && $modelClass::query()->where('document_number', $number)->exists();
+    }
+
     private static function shouldReset(ResetPeriod $period, ?Carbon $lastResetAt, Carbon $now): bool
     {
-        if ($period === ResetPeriod::NEVER) {
+        if ($period === ResetPeriod::NEVER || $lastResetAt === null) {
             return false;
-        }
-
-        if ($lastResetAt === null) {
-            return true;
         }
 
         return match ($period) {

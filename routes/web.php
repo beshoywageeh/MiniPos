@@ -2,6 +2,7 @@
 
 use App\Enums\MovementType;
 use App\Http\Controllers\ProductLookupController;
+use App\Http\Controllers\PurchaseInvoicePreviewController;
 use App\Http\Controllers\SaleInvoicePreviewController;
 use App\Models\Cashbox;
 use App\Models\Expense;
@@ -22,14 +23,25 @@ Route::group(['middleware' => ['auth']], function () {
         ->whereNumber('product')
         ->name('products.show');
     Route::livewire('/units', 'livewire.unit.index')->name('units.index');
+    Route::livewire('/warehouses', 'livewire.warehouse.index')->name('warehouses.index');
     Route::livewire('/parties', 'livewire.party.index')->name('parties.index');
+    Route::livewire('/parties/{party}', 'livewire.party.show')
+        ->whereNumber('party')
+        ->name('parties.show');
     Route::livewire('/settings', 'livewire.settings.index')->name('settings.index');
     Route::livewire('/document-sequences', 'livewire.document-sequences.index')->name('document-sequences.index');
 
+    Route::livewire('/sales', 'livewire.sales.index')->name('sales.index');
     Route::livewire('/sales/create', 'livewire.sales.create')->name('sales.create');
     Route::get('/sales/{sale}/invoice-preview', SaleInvoicePreviewController::class)
         ->whereNumber('sale')
         ->name('sales.invoice_preview');
+
+    Route::livewire('/purchases', 'livewire.purchase.index')->name('purchases.index');
+    Route::livewire('/purchases/create', 'livewire.purchase.create')->name('purchases.create');
+    Route::get('/purchases/{purchase}/invoice-preview', PurchaseInvoicePreviewController::class)
+        ->whereNumber('purchase')
+        ->name('purchases.invoice_preview');
 
     Route::view('/reports', 'reports.index')->name('reports.index');
 

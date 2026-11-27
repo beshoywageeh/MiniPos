@@ -52,6 +52,17 @@ new class extends Component {
         $this->invoiceDate = today()->format('Y-m-d');
         $this->dueDate = today()->addDays(14)->format('Y-m-d');
         $this->paymentMethod = PaymentMethod::CASH->value;
+
+        $warehouses = $this->warehouseOptions();
+        if (count($warehouses) === 1) {
+            $this->warehouseId = (int) array_key_first($warehouses);
+        }
+
+        $cashboxes = $this->cashboxOptions();
+        if (count($cashboxes) === 1) {
+            $this->cashboxId = (int) array_key_first($cashboxes);
+        }
+
         $this->addItem();
     }
 
@@ -157,7 +168,9 @@ new class extends Component {
     #[Computed]
     public function warehouseOptions(): array
     {
-        return Warehouse::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all();
+        $options = Warehouse::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all();
+
+        return count($options) > 1 ? ['' => __('sales.select_warehouse')] + $options : $options;
     }
 
     /**
@@ -166,7 +179,9 @@ new class extends Component {
     #[Computed]
     public function cashboxOptions(): array
     {
-        return Cashbox::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all();
+        $options = Cashbox::query()->where('is_active', true)->orderBy('name')->pluck('name', 'id')->all();
+
+        return count($options) > 1 ? ['' => __('sales.select_cashbox')] + $options : $options;
     }
 
     /**
@@ -217,6 +232,10 @@ new class extends Component {
     public function save(): void
     {
         $this->validate();
+
+        if (! $this->validateWarehouseStock()) {
+            return;
+        }
 
         $total = $this->grandTotal;
         $paid = $this->isDraft ? 0.0 : $this->paidFloat();
@@ -288,6 +307,66 @@ new class extends Component {
         });
 
         $this->redirectRoute('sales.invoice_preview', ['sale' => $sale], navigate: true);
+    }
+
+    /**
+     * Check the combined quantity of each product against the stock held in
+     * the selected warehouse. Drafts are exempt because they create no movements.
+     */
+    private function validateWarehouseStock(): bool
+    {
+        if ($this->isDraft) {
+            return true;
+        }
+
+        $requested = [];
+
+        foreach ($this->items as $index => $item) {
+            $productId = (int) ($item['product_id'] ?? 0);
+            $quantity = (float) ($item['quantity'] ?? 0);
+
+            $requested[$productId]['quantity'] = ($requested[$productId]['quantity'] ?? 0) + $quantity;
+            $requested[$productId]['index'] ??= $index;
+        }
+
+        if ($requested === []) {
+            return true;
+        }
+
+        $productIds = array_keys($requested);
+
+        $productNames = Product::query()
+            ->whereIn('id', $productIds)
+            ->pluck('name', 'id');
+
+        $availableByProduct = StockMovement::query()
+            ->where('warehouse_id', $this->warehouseId)
+            ->whereIn('product_id', $productIds)
+            ->selectRaw(
+                'product_id, SUM(CASE WHEN movement_type = ? THEN quantity ELSE -quantity END) as available',
+                [MovementType::IN->value]
+            )
+            ->groupBy('product_id')
+            ->pluck('available', 'product_id');
+
+        $hasEnoughStock = true;
+
+        foreach ($requested as $productId => $line) {
+            $available = (float) ($availableByProduct[$productId] ?? 0);
+
+            if ($line['quantity'] <= $available + 0.000001) {
+                continue;
+            }
+
+            $this->addError("items.{$line['index']}.quantity", __('sales.insufficient_stock', [
+                'available' => rtrim(rtrim(number_format($available, 3, '.', ''), '0'), '.'),
+                'product' => $productNames[$productId] ?? __('sales.product'),
+            ]));
+
+            $hasEnoughStock = false;
+        }
+
+        return $hasEnoughStock;
     }
 
     /**

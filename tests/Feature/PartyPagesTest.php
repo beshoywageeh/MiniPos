@@ -24,6 +24,15 @@ test('parties page lists parties with their type labels', function () {
         ->assertSee('Supplier');
 });
 
+test('the parties list links each party to its detail page', function () {
+    $user = User::factory()->create();
+    $party = Party::factory()->create(['name' => 'Acme Supplier']);
+
+    $html = Livewire::actingAs($user)->test('livewire.party.index')->html();
+
+    expect($html)->toContain(route('parties.show', $party));
+});
+
 test('parties search matches the given field', function (string $value) {
     $user = User::factory()->create();
     Party::factory()->create([

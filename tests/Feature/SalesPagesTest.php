@@ -223,11 +223,11 @@ test('invoice preview returns 404 for a missing sale', function () {
     $this->actingAs($user)->get('/sales/999999/invoice-preview')->assertNotFound();
 });
 
-test('sidebar sales link points to the new sale page', function () {
+test('sidebar sales link points to the sales list', function () {
     $user = User::factory()->create();
 
     $response = $this->actingAs($user)->get('/dashboard');
 
     $response->assertOk();
-    $response->assertSee(route('sales.create'));
+    $response->assertSee(route('sales.index'));
 });

@@ -2,6 +2,7 @@
 
 use App\Enums\ResetPeriod;
 use App\Models\DocumentSequence;
+use App\Models\Sale;
 use App\Support\DocumentNumber;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -86,6 +87,51 @@ test('the first call stamps last_reset_at without resetting a never sequence', f
 
     expect(DocumentNumber::next('sale'))->toBe('SALE-000005')
         ->and(DocumentSequence::query()->where('document_type', 'sale')->first()->last_reset_at)->not->toBeNull();
+});
+
+test('the first call stamps last_reset_at without resetting a periodic sequence', function () {
+    $this->travelTo('2026-11-20 10:00:00');
+
+    $sequence = DocumentSequence::factory()->forDocumentType('sale', 'SALE')->create([
+        'next_number' => 26,
+        'padding' => 6,
+        'reset_period' => ResetPeriod::MONTHLY,
+        'last_reset_at' => null,
+    ]);
+
+    expect(DocumentNumber::next('sale'))->toBe('SALE-000026')
+        ->and($sequence->refresh()->next_number)->toBe(27)
+        ->and($sequence->last_reset_at->toDateString())->toBe('2026-11-20');
+});
+
+test('a period reset skips document numbers that are already in use', function () {
+    $this->travelTo('2026-11-20 10:00:00');
+
+    Sale::factory()->create(['document_number' => 'SALE-000001']);
+    Sale::factory()->create(['document_number' => 'SALE-000002']);
+
+    $sequence = DocumentSequence::factory()->forDocumentType('sale', 'SALE')->create([
+        'next_number' => 42,
+        'padding' => 6,
+        'reset_period' => ResetPeriod::MONTHLY,
+        'last_reset_at' => '2026-10-20 10:00:00',
+    ]);
+
+    expect(DocumentNumber::next('sale'))->toBe('SALE-000003')
+        ->and($sequence->refresh()->next_number)->toBe(4);
+});
+
+test('a rewound sequence skips document numbers that are already in use', function () {
+    Sale::factory()->create(['document_number' => 'SALE-000001']);
+
+    $sequence = DocumentSequence::factory()->forDocumentType('sale', 'SALE')->create([
+        'next_number' => 1,
+        'padding' => 6,
+        'reset_period' => ResetPeriod::NEVER,
+    ]);
+
+    expect(DocumentNumber::next('sale'))->toBe('SALE-000002')
+        ->and($sequence->refresh()->next_number)->toBe(3);
 });
 
 test('an unknown document type throws', function () {

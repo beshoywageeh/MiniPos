@@ -42,4 +42,17 @@ return [
     'cashier' => 'Cashier',
     'received_by' => 'Received by: ____________________',
     'thank_you' => 'Thank you for your business!',
+
+    'list_title' => 'Sales',
+    'list_subtitle' => 'Browse invoices and filter them by warehouse.',
+    'new_sale' => 'New Sale',
+    'date' => 'Date',
+    'status' => 'Status',
+    'actions' => 'Actions',
+    'view' => 'View',
+    'no_records' => 'No sales found.',
+    'all_warehouses' => 'All warehouses',
+    'select_warehouse' => 'Select a warehouse',
+    'select_cashbox' => 'Select a cashbox',
+    'insufficient_stock' => 'Only :available left in :product in the selected warehouse.',
 ];
