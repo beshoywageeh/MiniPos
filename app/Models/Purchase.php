@@ -2,10 +2,16 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Purchase extends Model
 {
+    use HasFactory;
+
     /** @var list<string> */
     protected $fillable = [
         'document_number',
@@ -23,23 +29,50 @@ class Purchase extends Model
         'notes',
         'created_by',
     ];
-protected $casts = [
+
+    protected $casts = [
         'invoice_date' => 'datetime',
         'due_date' => 'datetime',
-        'status' => \App\Enums\DocumentStatus::class,
+        'status' => DocumentStatus::class,
     ];
-    public function party()
+
+    /**
+     * @return BelongsTo<Party, $this>
+     */
+    public function party(): BelongsTo
     {
         return $this->belongsTo(Party::class);
     }
 
-    public function warehouse()
+    /**
+     * @return BelongsTo<Warehouse, $this>
+     */
+    public function warehouse(): BelongsTo
     {
         return $this->belongsTo(Warehouse::class);
     }
 
-    public function items()
+    /**
+     * @return HasMany<PurchaseItem, $this>
+     */
+    public function items(): HasMany
     {
         return $this->hasMany(PurchaseItem::class);
+    }
+
+    /**
+     * @return HasMany<Payment, $this>
+     */
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function creator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'created_by');
     }
 }

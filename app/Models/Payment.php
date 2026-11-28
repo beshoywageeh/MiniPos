@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentMethod;
+use App\Enums\PaymentType;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Payment extends Model
 {
+    use HasFactory;
+
     /** @var list<string> */
     protected $fillable = [
         'document_number',
@@ -22,10 +27,11 @@ class Payment extends Model
         'notes',
         'created_by',
     ];
+
     protected $casts = [
         'payment_date' => 'datetime',
-        'type' => \App\Enums\PaymentType::class,
-        'method' => \App\Enums\PaymentMethod::class,
+        'type' => PaymentType::class,
+        'method' => PaymentMethod::class,
     ];
 
     public function party()

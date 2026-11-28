@@ -1,19 +1,19 @@
 <?php
 
-namespace App\Enums\Enums;
+namespace App\Enums;
 
-enum ExpenseCategory
+enum ExpenseCategory: string
 {
-    case OFFICE;
-    case TRAVEL;
-    case ENTERTAINMENT;
-    case UTILITIES;
-    case SALARIES;
-    case RENT;
-    case MAINTENANCE;
-    case INSURANCE;
-    case TAXES;
-    case ADVERTISING;
+    case OFFICE = 'office';
+    case TRAVEL = 'travel';
+    case ENTERTAINMENT = 'entertainment';
+    case UTILITIES = 'utilities';
+    case SALARIES = 'salaries';
+    case RENT = 'rent';
+    case MAINTENANCE = 'maintenance';
+    case INSURANCE = 'insurance';
+    case TAXES = 'taxes';
+    case ADVERTISING = 'advertising';
 
     public function label(): string
     {

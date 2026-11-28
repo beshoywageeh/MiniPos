@@ -2,10 +2,15 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Warehouse extends Model
 {
+    use HasFactory;
+    use SoftDeletes;
+
     /** @var list<string> */
     protected $fillable = [
         'code',
@@ -13,6 +18,11 @@ class Warehouse extends Model
         'address',
         'note',
         'is_active',
+    ];
+
+    /** @var array<string, string> */
+    protected $casts = [
+        'is_active' => 'boolean',
     ];
 
     public function purchases()

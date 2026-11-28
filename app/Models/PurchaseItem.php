@@ -12,8 +12,8 @@ class PurchaseItem extends Model
         'product_name',
         'sku',
         'quantity',
-        'unit_cost',
-        'document_amount',
+        'unit_price',
+        'discount_amount',
         'tax_amount',
         'line_total',
     ];

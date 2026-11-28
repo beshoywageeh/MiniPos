@@ -3,24 +3,28 @@
 namespace App\Models;
 
 use App\Enums\PartyType;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Party extends Model
 {
+    use HasFactory, SoftDeletes;
+
     protected $fillable = [
         'code',
         'name',
         'type',
         'phone',
-        'email',
         'address',
-        'tax_number',
         'note',
         'is_active',
     ];
+
     protected $casts = [
-        'type' => PartyType::class
+        'type' => PartyType::class,
     ];
+
     public function purchases()
     {
         return $this->hasMany(Purchase::class);
@@ -44,5 +48,10 @@ class Party extends Model
     public function payments()
     {
         return $this->hasMany(Payment::class);
+    }
+
+    public function brands()
+    {
+        return $this->belongsToMany(Brand::class);
     }
 }

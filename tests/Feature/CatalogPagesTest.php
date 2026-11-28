@@ -1,0 +1,218 @@
+<?php
+
+use App\Models\Brand;
+use App\Models\Category;
+use App\Models\User;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Livewire\Livewire;
+
+uses(RefreshDatabase::class);
+
+test('categories page route exists and requires auth', function () {
+    expect(route('categories.index'))->toBe(url('/categories'));
+
+    $this->get(route('categories.index'))->assertRedirect();
+});
+
+test('brands page route exists and requires auth', function () {
+    expect(route('brands.index'))->toBe(url('/brands'));
+
+    $this->get(route('brands.index'))->assertRedirect();
+});
+
+test('categories page lists categories with parent names', function () {
+    $user = User::factory()->create();
+    $parent = Category::factory()->create(['name' => 'Beverages']);
+    Category::factory()->create(['name' => 'Soda', 'parent_id' => $parent->id]);
+
+    Livewire::actingAs($user)->test('livewire.catalog.categories.index')
+        ->assertSee('Beverages')
+        ->assertSee('Soda');
+});
+
+test('categories search filters by name', function () {
+    $user = User::factory()->create();
+    Category::factory()->create(['name' => 'Beverages']);
+    Category::factory()->create(['name' => 'Snacks']);
+
+    Livewire::actingAs($user)->test('livewire.catalog.categories.index')
+        ->set('search', 'Snacks')
+        ->assertSee('Snacks')
+        ->assertDontSee('Beverages');
+});
+
+test('categories search with no match shows empty state', function () {
+    $user = User::factory()->create();
+    Category::factory()->create(['name' => 'Beverages']);
+
+    Livewire::actingAs($user)->test('livewire.catalog.categories.index')
+        ->set('search', 'zzzz')
+        ->assertSee(__('categories.no_records'));
+});
+
+test('categories list refreshes when an event fires', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->create(['name' => 'Before Update']);
+
+    $component = Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.index');
+
+    expect($component->html())->toContain('Before Update');
+
+    $target->update(['name' => 'After Update']);
+
+    $component->dispatch('category-updated');
+
+    expect($component->html())->toContain('After Update');
+});
+
+test('a category can be created', function () {
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.create')
+        ->set('code', 'CAT-TEST')
+        ->set('name', 'Beverages')
+        ->call('create')
+        ->assertDispatched('category-created');
+
+    expect(Category::where('code', 'CAT-TEST')->where('name', 'Beverages')->exists())->toBeTrue();
+});
+
+test('category creation validates duplicate code and required name', function () {
+    Category::factory()->create(['code' => 'CAT-TAKEN']);
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.create')
+        ->set('code', 'CAT-TAKEN')
+        ->set('name', '')
+        ->call('create')
+        ->assertHasErrors(['code' => 'unique', 'name' => 'required'])
+        ->assertNotDispatched('category-created');
+});
+
+test('a category can be created with a parent', function () {
+    $user = User::factory()->create();
+    $parent = Category::factory()->create(['name' => 'Root']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.create')
+        ->set('code', 'CAT-CHILD')
+        ->set('name', 'Soda')
+        ->set('parentId', $parent->id)
+        ->call('create')
+        ->assertDispatched('category-created');
+
+    expect(Category::where('code', 'CAT-CHILD')->first()->parent_id)->toBe($parent->id);
+});
+
+test('a category can be updated including its parent', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->create(['name' => 'Old']);
+    $parent = Category::factory()->create(['name' => 'Root']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.update', ['category' => $target])
+        ->assertSet('name', 'Old')
+        ->set('name', 'New')
+        ->set('parentId', $parent->id)
+        ->call('update')
+        ->assertDispatched('category-updated');
+
+    expect($target->refresh()->name)->toBe('New')
+        ->and($target->parent_id)->toBe($parent->id);
+});
+
+test('keeping own code passes unique validation on category update', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->create(['code' => 'CAT-KEEP']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.update', ['category' => $target])
+        ->set('name', 'Renamed')
+        ->call('update')
+        ->assertHasNoErrors();
+
+    expect($target->refresh()->code)->toBe('CAT-KEEP');
+});
+
+test('a category cannot select itself as parent', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->create();
+
+    $component = Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.update', ['category' => $target]);
+
+    expect($component->instance()->parentOptions->keys())->not->toContain($target->id);
+});
+
+test('a category can be soft deleted', function () {
+    $user = User::factory()->create();
+    $target = Category::factory()->create(['name' => 'Doomed']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.categories.actions.delete', ['category' => $target])
+        ->call('delete')
+        ->assertDispatched('category-deleted');
+
+    expect($target->refresh()->deleted_at)->not->toBeNull()
+        ->and(Category::where('name', 'Doomed')->exists())->toBeFalse();
+});
+
+test('brands page lists brands', function () {
+    $user = User::factory()->create();
+    Brand::factory()->create(['name' => 'Acme Corp']);
+
+    Livewire::actingAs($user)->test('livewire.catalog.brands.index')
+        ->assertSee('Acme Corp');
+});
+
+test('a brand can be created and duplicate codes are rejected', function () {
+    Brand::factory()->create(['code' => 'BRD-TAKEN']);
+    $user = User::factory()->create();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.brands.actions.create')
+        ->set('code', 'BRD-NEW')
+        ->set('name', 'Acme Corp')
+        ->call('create')
+        ->assertDispatched('brand-created');
+
+    expect(Brand::where('code', 'BRD-NEW')->exists())->toBeTrue();
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.brands.actions.create')
+        ->set('code', 'BRD-TAKEN')
+        ->set('name', 'Other')
+        ->call('create')
+        ->assertHasErrors(['code' => 'unique'])
+        ->assertNotDispatched('brand-created');
+});
+
+test('a brand can be updated and its own code passes unique validation', function () {
+    $user = User::factory()->create();
+    $target = Brand::factory()->create(['code' => 'BRD-KEEP', 'name' => 'Old']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.brands.actions.update', ['brand' => $target])
+        ->set('name', 'New')
+        ->call('update')
+        ->assertDispatched('brand-updated')
+        ->assertHasNoErrors();
+
+    expect($target->refresh()->name)->toBe('New')
+        ->and($target->code)->toBe('BRD-KEEP');
+});
+
+test('a brand can be soft deleted', function () {
+    $user = User::factory()->create();
+    $target = Brand::factory()->create(['name' => 'Doomed']);
+
+    Livewire::actingAs($user)
+        ->test('livewire.catalog.brands.actions.delete', ['brand' => $target])
+        ->call('delete')
+        ->assertDispatched('brand-deleted');
+
+    expect($target->refresh()->deleted_at)->not->toBeNull();
+});

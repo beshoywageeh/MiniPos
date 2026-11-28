@@ -2,11 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\ExpenseCategory;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Enums\Enums\ExpenseCategory;
 
 class Expense extends Model
 {
+    use HasFactory;
+
     /** @var list<string> */
     protected $fillable = [
         'document_number',
@@ -18,10 +21,12 @@ class Expense extends Model
         'notes',
         'created_by',
     ];
+
     protected $casts = [
         'expense_category' => ExpenseCategory::class,
         'expense_date' => 'date',
     ];
+
     public function cashbox()
     {
         return $this->belongsTo(Cashbox::class);

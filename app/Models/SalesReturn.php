@@ -2,10 +2,14 @@
 
 namespace App\Models;
 
+use App\Enums\DocumentStatus;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class SalesReturn extends Model
 {
+    use HasFactory;
+
     /** @var list<string> */
     protected $fillable = [
         'document_number',
@@ -18,10 +22,12 @@ class SalesReturn extends Model
         'notes',
         'created_by',
     ];
+
     protected $casts = [
         'return_date' => 'datetime',
-        'status' => \App\Enums\DocumentStatus::class,
+        'status' => DocumentStatus::class,
     ];
+
     public function sale()
     {
         return $this->belongsTo(Sale::class);
