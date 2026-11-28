@@ -13,6 +13,7 @@ use App\Models\SaleItem;
 use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
+use App\Support\StockMovementRecorder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Livewire\Livewire;
 
@@ -115,6 +116,7 @@ test('a paid sale writes out movements and a receipt payment', function () {
         ->and($movement->reference_type)->toBe(Sale::class)
         ->and($movement->reference_id)->toBe($sale->id)
         ->and($movement->warehouse_id)->toBe($this->warehouse->id)
+        ->and($movement->balance_after)->not->toBeNull()
         ->and($payment->type)->toBe(PaymentType::recipt)
         ->and($payment->sale_id)->toBe($sale->id)
         ->and($payment->party_id)->toBe($this->customer->id)
@@ -438,4 +440,27 @@ test('saving a sale redirects to that sale invoice preview', function () {
         ->call('save')
         ->assertHasNoErrors()
         ->assertRedirect(route('sales.invoice_preview', Sale::query()->sole()));
+});
+
+test('recorder computes balance_after from signed stock total', function () {
+    $product = Product::factory()->create();
+    $warehouse = Warehouse::factory()->create();
+    $user = User::factory()->create();
+
+    $recorder = app(StockMovementRecorder::class);
+
+    $recorder->record([
+        'product' => $product, 'warehouse' => $warehouse,
+        'movement_type' => MovementType::IN, 'quantity' => '10',
+        'unit_cost' => '0', 'reference_type' => null, 'reference_id' => null,
+        'note' => null, 'movement_date' => today()->toDateString(), 'created_by' => $user->id,
+    ]);
+    $movement = $recorder->record([
+        'product' => $product, 'warehouse' => $warehouse,
+        'movement_type' => MovementType::OUT, 'quantity' => '3.5',
+        'unit_cost' => '0', 'reference_type' => null, 'reference_id' => null,
+        'note' => null, 'movement_date' => today()->toDateString(), 'created_by' => $user->id,
+    ]);
+
+    expect((float) $movement->balance_after)->toBe(6.5);
 });

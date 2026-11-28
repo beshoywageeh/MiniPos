@@ -169,3 +169,10 @@ describe('DemoDataSeeder', function () {
             ->each(fn (Party $supplier) => expect($supplier->brands_count)->toBe($brandCount));
     });
 });
+
+it('gives seeded stock movements a balance snapshot', function () {
+    $this->seed(TestSeeder::class);
+    $this->seed(DemoDataSeeder::class);
+
+    expect(StockMovement::query()->whereNull('balance_after')->doesntExist())->toBeTrue();
+});

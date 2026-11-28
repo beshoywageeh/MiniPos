@@ -11,10 +11,10 @@ use App\Models\Party;
 use App\Models\Payment;
 use App\Models\Product;
 use App\Models\Purchase;
-use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Support\DocumentNumber;
 use App\Support\ProductMatcher;
+use App\Support\StockMovementRecorder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -272,19 +272,23 @@ new class extends Component {
                 return $purchase;
             }
 
+            $warehouse = Warehouse::query()->findOrFail($purchase->warehouse_id);
+            $recorder = app(StockMovementRecorder::class);
+
             foreach ($purchase->items as $item) {
                 if ($products[$item->product_id]->type === ProductType::Service) {
                     continue;
                 }
 
-                StockMovement::query()->create([
-                    'product_id' => $item->product_id,
-                    'warehouse_id' => $purchase->warehouse_id,
+                $recorder->record([
+                    'product' => $products[$item->product_id],
+                    'warehouse' => $warehouse,
                     'movement_type' => MovementType::IN,
                     'quantity' => $item->quantity,
                     'unit_cost' => $item->unit_price,
                     'reference_type' => Purchase::class,
                     'reference_id' => $purchase->id,
+                    'note' => null,
                     'movement_date' => $purchase->invoice_date,
                     'created_by' => Auth::id(),
                 ]);

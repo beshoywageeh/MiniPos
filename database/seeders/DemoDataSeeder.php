@@ -18,10 +18,10 @@ use App\Models\Purchase;
 use App\Models\PurchaseReturn;
 use App\Models\Sale;
 use App\Models\SalesReturn;
-use App\Models\StockMovement;
 use App\Models\User;
 use App\Models\Warehouse;
 use App\Support\DocumentNumber;
+use App\Support\StockMovementRecorder;
 use Database\Factories\PartyFactory;
 use Database\Factories\ProductFactory;
 use Illuminate\Database\Eloquent\Collection;
@@ -174,14 +174,17 @@ class DemoDataSeeder extends Seeder
             $this->seedDocumentPayment($purchase, $cashbox, $user);
         }
 
-        $purchase->items->each(fn ($item) => StockMovement::query()->create([
-            'product_id' => $item->product_id,
-            'warehouse_id' => $warehouse->id,
+        $recorder = app(StockMovementRecorder::class);
+
+        $purchase->items->each(fn ($item) => $recorder->record([
+            'product' => Product::query()->findOrFail($item->product_id),
+            'warehouse' => $warehouse,
             'movement_type' => MovementType::IN,
             'quantity' => $item->quantity,
             'unit_cost' => $item->unit_price,
             'reference_type' => Purchase::class,
             'reference_id' => $purchase->id,
+            'note' => null,
             'movement_date' => $invoiceDate,
             'created_by' => $user->id,
         ]));
@@ -256,14 +259,17 @@ class DemoDataSeeder extends Seeder
         }
 
         if ($status !== DocumentStatus::DRAFT) {
-            $sale->items->each(fn ($item) => StockMovement::query()->create([
-                'product_id' => $item->product_id,
-                'warehouse_id' => $warehouse->id,
+            $recorder = app(StockMovementRecorder::class);
+
+            $sale->items->each(fn ($item) => $recorder->record([
+                'product' => Product::query()->findOrFail($item->product_id),
+                'warehouse' => $warehouse,
                 'movement_type' => MovementType::OUT,
                 'quantity' => $item->quantity,
                 'unit_cost' => $item->cost_price,
                 'reference_type' => Sale::class,
                 'reference_id' => $sale->id,
+                'note' => null,
                 'movement_date' => $invoiceDate,
                 'created_by' => $user->id,
             ]));
@@ -326,14 +332,15 @@ class DemoDataSeeder extends Seeder
             'line_total' => $returnAmount,
         ]);
 
-        StockMovement::query()->create([
-            'product_id' => $item->product_id,
-            'warehouse_id' => $warehouse->id,
+        app(StockMovementRecorder::class)->record([
+            'product' => Product::query()->findOrFail($item->product_id),
+            'warehouse' => $warehouse,
             'movement_type' => MovementType::IN,
             'quantity' => $quantity,
             'unit_cost' => $item->unit_price,
             'reference_type' => PurchaseReturn::class,
             'reference_id' => $purchaseReturn->id,
+            'note' => null,
             'movement_date' => (clone $purchase->invoice_date)->modify('+1 week'),
             'created_by' => $user->id,
         ]);
@@ -372,14 +379,15 @@ class DemoDataSeeder extends Seeder
             'line_total' => $returnAmount,
         ]);
 
-        StockMovement::query()->create([
-            'product_id' => $item->product_id,
-            'warehouse_id' => $warehouse->id,
+        app(StockMovementRecorder::class)->record([
+            'product' => Product::query()->findOrFail($item->product_id),
+            'warehouse' => $warehouse,
             'movement_type' => MovementType::IN,
             'quantity' => $quantity,
             'unit_cost' => $item->cost_price,
             'reference_type' => SalesReturn::class,
             'reference_id' => $salesReturn->id,
+            'note' => null,
             'movement_date' => (clone $sale->invoice_date)->modify('+1 week'),
             'created_by' => $user->id,
         ]);

@@ -14,6 +14,7 @@ use App\Models\StockMovement;
 use App\Models\Warehouse;
 use App\Support\DocumentNumber;
 use App\Support\ProductMatcher;
+use App\Support\StockMovementRecorder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -275,15 +276,19 @@ new class extends Component {
                 return $sale;
             }
 
+            $warehouse = Warehouse::query()->findOrFail($sale->warehouse_id);
+            $recorder = app(StockMovementRecorder::class);
+
             foreach ($sale->items as $item) {
-                StockMovement::query()->create([
-                    'product_id' => $item->product_id,
-                    'warehouse_id' => $sale->warehouse_id,
+                $recorder->record([
+                    'product' => $products[$item->product_id],
+                    'warehouse' => $warehouse,
                     'movement_type' => MovementType::OUT,
                     'quantity' => $item->quantity,
                     'unit_cost' => $item->cost_price,
                     'reference_type' => Sale::class,
                     'reference_id' => $sale->id,
+                    'note' => null,
                     'movement_date' => $sale->invoice_date,
                     'created_by' => Auth::id(),
                 ]);

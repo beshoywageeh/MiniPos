@@ -144,6 +144,7 @@ test('non draft purchase records stock received and supplier payment', function 
         ->and((float) $movement->unit_cost)->toBe(25.0)
         ->and($movement->reference_type)->toBe(Purchase::class)
         ->and($movement->reference_id)->toBe($purchase->id)
+        ->and($movement->balance_after)->not->toBeNull()
         ->and($payment->type)->toBe(PaymentType::payment)
         ->and($payment->purchase_id)->toBe($purchase->id)
         ->and($payment->party_id)->toBe($supplier->id)

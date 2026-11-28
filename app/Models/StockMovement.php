@@ -16,6 +16,8 @@ class StockMovement extends Model
         'movement_type',
         'quantity',
         'unit_cost',
+        'balance_after',
+        'is_override',
         'reference_type',
         'reference_id',
         'note',
