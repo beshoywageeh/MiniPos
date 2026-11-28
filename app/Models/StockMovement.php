@@ -9,6 +9,11 @@ class StockMovement extends Model
 {
     use HasFactory;
 
+    /** @var array<string, string> */
+    protected $casts = [
+        'is_override' => 'boolean',
+    ];
+
     /** @var list<string> */
     protected $fillable = [
         'product_id',
