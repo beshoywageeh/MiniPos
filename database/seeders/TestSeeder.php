@@ -102,6 +102,7 @@ class TestSeeder extends Seeder
         $this->seedDocumentSequence('expense', 'EXP');
         $this->seedDocumentSequence('sales_return', 'SRT');
         $this->seedDocumentSequence('purchase_return', 'PRT');
+        $this->seedDocumentSequence('stock_adjustment', 'STADJ');
 
         // Application settings
         collect([

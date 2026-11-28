@@ -10,6 +10,7 @@ use App\Models\Purchase;
 use App\Models\PurchaseReturn;
 use App\Models\Sale;
 use App\Models\SalesReturn;
+use App\Models\StockAdjustment;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
@@ -69,6 +70,7 @@ class DocumentNumber
             'expense' => Expense::class,
             'sales_return' => SalesReturn::class,
             'purchase_return' => PurchaseReturn::class,
+            'stock_adjustment' => StockAdjustment::class,
             default => null,
         };
 
