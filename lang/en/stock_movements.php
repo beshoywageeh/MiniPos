@@ -23,4 +23,13 @@ return [
     'no_movements' => 'No stock movements match these filters.',
     'in' => 'Stock in',
     'out' => 'Stock out',
+    'all_warehouses' => 'All warehouses',
+    'all_directions' => 'All directions',
+    'reason_source' => 'Reason / source',
+    'source_sale' => 'Sale',
+    'source_purchase' => 'Purchase',
+    'source_stock_adjustment' => 'Stock adjustment',
+    'source_sales_return' => 'Sales return',
+    'source_purchase_return' => 'Purchase return',
+    'source_legacy_adjustment' => 'Adjustment',
 ];

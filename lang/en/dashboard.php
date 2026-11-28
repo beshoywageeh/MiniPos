@@ -27,6 +27,7 @@ return [
     'nav_products' => 'Products',
     'nav_sales' => 'Sales',
     'nav_purchases' => 'Purchases',
+    'nav_stock_movements' => 'Stock Movements',
     'nav_parties' => 'Parties',
     'nav_expenses' => 'Expenses',
     'nav_reports' => 'Reports',

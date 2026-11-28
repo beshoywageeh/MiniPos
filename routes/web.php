@@ -44,6 +44,7 @@ Route::group(['middleware' => ['auth']], function () {
         ->whereNumber('purchase')
         ->name('purchases.invoice_preview');
 
+    Route::livewire('/stock-movements', 'livewire.stock-movements.index')->name('stock-movements.index');
     Route::livewire('/stock-movements/create', 'livewire.stock-movements.create')->name('stock-movements.create');
     Route::get('/stock-adjustments/{stockAdjustment}/preview', StockAdjustmentPreviewController::class)
         ->whereNumber('stockAdjustment')
