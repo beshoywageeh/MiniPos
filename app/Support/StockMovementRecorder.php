@@ -18,7 +18,7 @@ class StockMovementRecorder
             ->selectRaw('COALESCE(SUM(CASE WHEN movement_type = ? THEN quantity ELSE -quantity END), 0) as available', [MovementType::IN->value])
             ->first();
 
-        return (float) ($result?->available ?? 0);
+        return (float) $result->getAttribute('available');
     }
 
     /**

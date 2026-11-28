@@ -33,13 +33,8 @@ class RecordStockAdjustment
     {
         $payload = $attributes;
 
-        if ($payload['movement_type'] instanceof MovementType) {
-            $payload['movement_type'] = $payload['movement_type']->value;
-        }
-
-        if ($payload['reason'] instanceof StockAdjustmentReason) {
-            $payload['reason'] = $payload['reason']->value;
-        }
+        $payload['movement_type'] = $payload['movement_type']->value;
+        $payload['reason'] = $payload['reason']->value;
 
         $validated = Validator::make($payload, [
             'product_id' => ['required', 'integer', 'exists:products,id'],
