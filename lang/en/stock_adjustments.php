@@ -19,6 +19,7 @@ return [
     'select_reason' => 'Select a reason',
     'quantity' => 'Quantity',
     'unit_cost' => 'Unit cost',
+    'balance_after' => 'Balance after',
     'date' => 'Date',
     'note' => 'Note',
     'note_help' => 'Required when overriding an insufficient-stock adjustment.',
@@ -32,5 +33,9 @@ return [
     'override_yes' => 'Override applied',
     'override_no' => 'Standard adjustment',
     'print' => 'Print',
+    'print_preview' => 'Stock adjustment preview',
+    'paper_a4' => 'A4',
+    'paper_thermal' => '80mm thermal',
+    'document_title' => 'Stock adjustment',
     'footer' => 'This document records a manual stock adjustment and is not a tax invoice.',
 ];

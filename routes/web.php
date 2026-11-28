@@ -4,12 +4,12 @@ use App\Enums\MovementType;
 use App\Http\Controllers\ProductLookupController;
 use App\Http\Controllers\PurchaseInvoicePreviewController;
 use App\Http\Controllers\SaleInvoicePreviewController;
+use App\Http\Controllers\StockAdjustmentPreviewController;
 use App\Models\Cashbox;
 use App\Models\Expense;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
-use App\Models\StockAdjustment;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => ['auth']], function () {
@@ -45,9 +45,8 @@ Route::group(['middleware' => ['auth']], function () {
         ->name('purchases.invoice_preview');
 
     Route::livewire('/stock-movements/create', 'livewire.stock-movements.create')->name('stock-movements.create');
-    Route::get('/stock-adjustments/{stockAdjustment}/preview', function (StockAdjustment $stockAdjustment): never {
-        abort(501);
-    })->whereNumber('stockAdjustment')
+    Route::get('/stock-adjustments/{stockAdjustment}/preview', StockAdjustmentPreviewController::class)
+        ->whereNumber('stockAdjustment')
         ->name('stock-adjustments.preview');
 
     Route::view('/reports', 'reports.index')->name('reports.index');
