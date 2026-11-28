@@ -1,0 +1,26 @@
+<?php
+
+return [
+    'title' => 'Stock movements',
+    'subtitle' => 'Review every stock increase and decrease across your warehouses.',
+    'new_adjustment' => 'New adjustment',
+    'product' => 'Product',
+    'warehouse' => 'Warehouse',
+    'direction' => 'Direction',
+    'quantity' => 'Quantity',
+    'unit_cost' => 'Unit cost',
+    'date' => 'Date',
+    'note' => 'Note',
+    'source' => 'Source',
+    'created_by' => 'Created by',
+    'balance_after' => 'Balance after',
+    'override' => 'Override',
+    'none' => 'None',
+    'all' => 'All',
+    'search_placeholder' => 'Search by product name, code, or SKU',
+    'date_from' => 'From date',
+    'date_to' => 'To date',
+    'no_movements' => 'No stock movements match these filters.',
+    'in' => 'Stock in',
+    'out' => 'Stock out',
+];

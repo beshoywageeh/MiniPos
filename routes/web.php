@@ -9,6 +9,7 @@ use App\Models\Expense;
 use App\Models\Product;
 use App\Models\Purchase;
 use App\Models\Sale;
+use App\Models\StockAdjustment;
 use Illuminate\Support\Facades\Route;
 
 Route::group(['middleware' => ['auth']], function () {
@@ -42,6 +43,12 @@ Route::group(['middleware' => ['auth']], function () {
     Route::get('/purchases/{purchase}/invoice-preview', PurchaseInvoicePreviewController::class)
         ->whereNumber('purchase')
         ->name('purchases.invoice_preview');
+
+    Route::livewire('/stock-movements/create', 'livewire.stock-movements.create')->name('stock-movements.create');
+    Route::get('/stock-adjustments/{stockAdjustment}/preview', function (StockAdjustment $stockAdjustment): never {
+        abort(501);
+    })->whereNumber('stockAdjustment')
+        ->name('stock-adjustments.preview');
 
     Route::view('/reports', 'reports.index')->name('reports.index');
 
