@@ -1,10 +1,13 @@
 <?php
 
 use App\Enums\MovementType;
+use App\Enums\StockAdjustmentReason;
 use App\Models\Product;
 use App\Models\Warehouse;
+use App\Support\RecordStockAdjustment;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Computed;
 use Livewire\Component;
 
@@ -19,9 +22,13 @@ new class extends Component {
 
     public string $unitCost = '';
 
+    public string $reason = '';
+
     public string $note = '';
 
     public string $movementDate = '';
+
+    public bool $isOverride = false;
 
     public function mount(Product $product): void
     {
@@ -51,30 +58,71 @@ new class extends Component {
         ];
     }
 
-    public function adjust(): void
+    /**
+     * @return array<string, string>
+     */
+    #[Computed]
+    public function reasonOptions(): array
     {
-        $this->validate([
+        return ['' => __('products.select_reason')] + collect(StockAdjustmentReason::cases())
+            ->mapWithKeys(fn (StockAdjustmentReason $reason): array => [$reason->value => $reason->label()])
+            ->all();
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    protected function rules(): array
+    {
+        return [
             'warehouseId' => ['required', 'integer', 'exists:warehouses,id'],
             'movementType' => ['required', Rule::in(array_column(MovementType::cases(), 'value'))],
             'quantity' => ['required', 'numeric', 'min:0.001'],
             'unitCost' => ['nullable', 'numeric', 'min:0'],
+            'reason' => ['required', Rule::in(array_column(StockAdjustmentReason::cases(), 'value'))],
             'note' => ['nullable', 'string'],
             'movementDate' => ['required', 'date'],
-        ]);
+            'isOverride' => ['boolean'],
+        ];
+    }
 
-        $this->product->stockMovements()->create([
-            'warehouse_id' => $this->warehouseId,
-            'movement_type' => $this->movementType,
-            'quantity' => $this->quantity,
-            'unit_cost' => $this->unitCost !== '' ? $this->unitCost : 0,
-            'reference_type' => 'adjustment',
-            'reference_id' => null,
-            'note' => $this->note,
-            'movement_date' => $this->movementDate,
-            'created_by' => Auth::id(),
-        ]);
+    public function adjust(): void
+    {
+        $this->validate();
 
-        $this->reset('warehouseId', 'quantity', 'unitCost', 'note');
+        try {
+            RecordStockAdjustment::execute([
+                'product_id' => $this->product->id,
+                'warehouse_id' => (int) $this->warehouseId,
+                'movement_type' => MovementType::from($this->movementType),
+                'quantity' => $this->quantity,
+                'unit_cost' => $this->unitCost !== '' ? $this->unitCost : 0,
+                'reason' => StockAdjustmentReason::from($this->reason),
+                'note' => $this->note !== '' ? $this->note : null,
+                'movement_date' => $this->movementDate,
+                'is_override' => $this->isOverride,
+                'created_by' => Auth::id(),
+            ]);
+        } catch (ValidationException $exception) {
+            /** @var array<string, string> $fieldMap */
+            $fieldMap = [
+                'product_id' => 'productId',
+                'warehouse_id' => 'warehouseId',
+                'unit_cost' => 'unitCost',
+                'movement_date' => 'movementDate',
+                'is_override' => 'isOverride',
+            ];
+
+            foreach ($exception->errors() as $field => $messages) {
+                foreach ($messages as $message) {
+                    $this->addError($fieldMap[$field] ?? $field, $message);
+                }
+            }
+
+            return;
+        }
+
+        $this->reset('warehouseId', 'quantity', 'unitCost', 'reason', 'note', 'isOverride');
         $this->movementType = MovementType::IN->value;
         $this->movementDate = today()->format('Y-m-d');
 
@@ -106,15 +154,23 @@ new class extends Component {
                     :options="$this->warehouseOptions" :selected="$warehouseId" />
                 <x-form.select name="movementType" wire:model="movementType" :label="__('products.direction')"
                     :options="$this->directionOptions" :selected="$movementType" />
+                <x-form.select name="reason" wire:model="reason" :label="__('products.reason')"
+                    :options="$this->reasonOptions" :selected="$reason" />
                 <x-form.input type="number" step="0.001" min="0.001" name="quantity" wire:model="quantity"
                     :label="__('products.quantity')" />
                 <x-form.input type="number" step="0.01" min="0" name="unitCost" wire:model="unitCost"
                     :label="__('products.unit_cost')" />
                 <x-form.input type="date" name="movementDate" wire:model="movementDate" :value="$movementDate"
                     :label="__('products.date')" />
+                <div class="sm:col-span-2">
+                    <x-form.checkbox name="isOverride" wire:model="isOverride" :label="__('products.is_override')"
+                        :checked="$isOverride" />
+                    <p class="mt-1 text-xs text-slate-500">{{ __('products.override_help') }}</p>
+                </div>
             </div>
 
-            <x-form.textarea name="note" wire:model="note" :label="__('products.description')" />
+            <x-form.textarea name="note" wire:model="note" :label="__('products.description')"
+                :help="__('products.override_help')" />
 
             <div class="flex justify-end gap-3 pt-2">
                 <x-button variant="secondary" @click="open = false">

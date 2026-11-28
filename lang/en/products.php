@@ -48,4 +48,8 @@ return [
     'direction' => 'Direction',
     'quantity' => 'Quantity',
     'total_stock' => 'Total stock',
+    'reason' => 'Reason',
+    'select_reason' => 'Select a reason',
+    'is_override' => 'Override insufficient stock',
+    'override_help' => 'Allow this adjustment to take stock below zero. A note is required when overriding.',
 ];
